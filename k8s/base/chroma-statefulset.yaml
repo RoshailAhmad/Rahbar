@@ -1,0 +1,89 @@
+# Chroma is a StatefulSet, not a Deployment (see docs/ARCHITECTURE.md): it owns data on
+# disk, so it needs a stable identity (chroma-0) and a PVC created from
+# volumeClaimTemplates that is re-attached to the same pod after a restart. One replica:
+# Chroma has a single writer, the indexer Job.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: chroma
+  namespace: rahbar
+  labels:
+    app: chroma
+spec:
+  serviceName: chroma
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chroma
+  template:
+    metadata:
+      labels:
+        app: chroma
+    spec:
+      serviceAccountName: chroma
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: chroma
+          # Same version as chromadb-client==1.0.12 in api/ and indexer/ requirements.
+          image: chromadb/chroma:1.0.12
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          # The 1.0.x image persists to /data by default; the PVC is mounted there.
+          startupProbe:
+            httpGet:
+              path: /api/v2/heartbeat
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /api/v2/heartbeat
+              port: http
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v2/heartbeat
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
