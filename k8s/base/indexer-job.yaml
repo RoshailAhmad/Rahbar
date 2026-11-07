@@ -1,0 +1,58 @@
+# The indexer is a Job, the only writer to Chroma (section 4.2, docs/adr/0001).
+# It runs once and exits. Re-index without a redeploy:
+#   kubectl create job --from=cronjob/reindex manual-reindex-1 -n rahbar
+# Jobs are immutable: to re-run THIS Job after changing it, delete it first
+#   kubectl delete job indexer -n rahbar && kubectl apply -k k8s/overlays/dev
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: indexer
+  namespace: rahbar
+  labels:
+    app: indexer
+spec:
+  backoffLimit: 4
+  activeDeadlineSeconds: 3600
+  template:
+    metadata:
+      labels:
+        app: indexer
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: indexer
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: indexer
+          image: rahbar-indexer:dev
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: rahbar-config
+          resources:
+            # Embedding a 40-page PDF holds far more memory than answering a query.
+            # Replace with numbers from `kubectl top pods` taken during a real run.
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1500m
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            # OCR (pdf2image, tesseract) writes temporary page images here
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
