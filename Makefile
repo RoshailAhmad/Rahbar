@@ -13,7 +13,7 @@ INGRESS_IP ?= $(shell minikube ip 2>/dev/null)
 HOST ?= rahbar.local
 
 .DEFAULT_GOAL := help
-.PHONY: help install test lint dev cluster images apply secret index ask fetch eval eval-fixtures check
+.PHONY: help install test lint dev cluster stage-corpus images apply secret index ask fetch eval eval-fixtures check status evidence
 
 help: ## list the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -40,7 +40,14 @@ cluster: ## start minikube with Calico, then enable metrics-server and ingress
 	minikube addons enable metrics-server
 	minikube addons enable ingress
 
-images: ## build the three images and load them into minikube (needs yours: Dockerfiles)
+stage-corpus: ## copy corpus/raw and eval/fixtures into the indexer build context
+	rm -rf indexer/corpus indexer/fixtures
+	mkdir -p indexer/corpus indexer/fixtures
+	if [ -d corpus/raw ]; then cp -r corpus/raw/. indexer/corpus/; fi
+	cp eval/fixtures/*.md indexer/fixtures/
+	touch indexer/corpus/.keep
+
+images: stage-corpus ## build the three images and load them into minikube
 	docker build -t rahbar-api:$(TAG) api
 	docker build -t rahbar-indexer:$(TAG) indexer
 	docker build -t rahbar-ui:$(TAG) ui
@@ -48,8 +55,23 @@ images: ## build the three images and load them into minikube (needs yours: Dock
 	minikube image load rahbar-indexer:$(TAG)
 	minikube image load rahbar-ui:$(TAG)
 
-apply: ## apply the dev overlay (needs yours: manifests)
+apply: ## apply the dev overlay, then wait for the data tier and the index
 	kubectl apply -k k8s/overlays/dev
+	kubectl rollout status statefulset/chroma -n $(NS) --timeout=180s
+	kubectl rollout status deployment/redis -n $(NS) --timeout=120s
+	kubectl wait --for=condition=complete job/indexer -n $(NS) --timeout=900s
+	kubectl rollout status deployment/api -n $(NS) --timeout=300s
+	kubectl rollout status deployment/ui -n $(NS) --timeout=120s
+
+status: ## pods, services, endpoints, hpa and jobs in the namespace
+	kubectl get pods,svc,endpoints,hpa,jobs,cronjobs,pvc -n $(NS) -o wide
+
+evidence: ## write kubectl top / endpoints / hpa / pods output into docs/evidence/
+	mkdir -p docs/evidence
+	kubectl top pods -n $(NS) --containers > docs/evidence/kubectl-top.txt
+	kubectl get endpoints api -n $(NS) -o wide > docs/evidence/get-endpoints.txt
+	kubectl get hpa -n $(NS) > docs/evidence/get-hpa.txt
+	kubectl get pods -n $(NS) -o wide > docs/evidence/get-pods.txt
 
 secret: ## create the LLM key Secret from the LLM_API_KEY variable; never from a file
 	@test -n "$$LLM_API_KEY" || { echo "export LLM_API_KEY=... first"; exit 1; }
