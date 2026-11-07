@@ -1,0 +1,27 @@
+# The e2e-eval CI job (section 6): a kind/k3d cluster, images loaded with
+# `kind load docker-image rahbar-*:ci`, the indexer run on the three fixture documents
+# baked into the image at /fixtures, and the stub LLM (no network, no model).
+# How CI gets embeddings (Ollama on the runner, or a stub embedder) is Part 2/3's call;
+# if it is Ollama on the runner, add an egress policy like overlays/dev/netpol-ollama.yaml.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+patches:
+  - target:
+      kind: ConfigMap
+      name: rahbar-config
+    patch: |-
+      - op: replace
+        path: /data/CORPUS_DIR
+        value: /fixtures
+      - op: replace
+        path: /data/LLM_PROVIDER
+        value: stub
+images:
+  - name: rahbar-api
+    newTag: ci
+  - name: rahbar-ui
+    newTag: ci
+  - name: rahbar-indexer
+    newTag: ci

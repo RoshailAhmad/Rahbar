@@ -1,0 +1,17 @@
+# minikube on your laptop:  kubectl apply -k k8s/overlays/dev
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - netpol-ollama.yaml
+# Week 1: stubs + dummy index. Delete these two lines when the real pipeline is ready.
+components:
+  - ../../components/stubs
+# Images built locally and loaded with `make images` (minikube image load).
+images:
+  - name: rahbar-api
+    newTag: dev
+  - name: rahbar-ui
+    newTag: dev
+  - name: rahbar-indexer
+    newTag: dev

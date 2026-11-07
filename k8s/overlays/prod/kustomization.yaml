@@ -1,0 +1,20 @@
+# What CI validates (kustomize build k8s/overlays/prod | kubeconform -strict) and what
+# cd.yml deploys. cd.yml pins the images to the commit SHA before applying:
+#   cd k8s/overlays/prod
+#   kustomize edit set image rahbar-api=docker.io/$DOCKERHUB_USER/rahbar-api:${{ github.sha }}
+#   (same for rahbar-ui and rahbar-indexer)
+# Never :latest. "What is running?" is answered by one SHA.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: rahbar-api
+    newName: docker.io/DOCKERHUB_USER/rahbar-api
+    newTag: set-by-cd
+  - name: rahbar-ui
+    newName: docker.io/DOCKERHUB_USER/rahbar-ui
+    newTag: set-by-cd
+  - name: rahbar-indexer
+    newName: docker.io/DOCKERHUB_USER/rahbar-indexer
+    newTag: set-by-cd
