@@ -23,9 +23,6 @@ patches:
       - op: replace
         path: /data/OLLAMA_URL
         value: http://OLLAMA_HOST_IP:11434
-      - op: replace
-        path: /data/RELEVANCE_FLOOR
-        value: "0.0"
 images:
   - name: rahbar-api
     newTag: ci
