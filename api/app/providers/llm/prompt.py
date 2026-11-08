@@ -26,7 +26,20 @@ Rules:
 5. Put your step-by-step thinking in `reasoning` (it is never shown to the user). Write
    `answer` as one to three complete sentences addressed to the student, never a bare
    word such as "True" or "False". Set confidence to high, medium or low.
-6. Reply with JSON that matches the schema. No prose outside the JSON."""
+6. Reply with JSON that matches the schema. No prose outside the JSON.
+
+Example. Evidence: <evidence id="1" source="rules.pdf" section="2 Academic Warning">A student
+whose CGPA falls below 2.00 is placed on academic warning.</evidence>
+Question: When is a student placed on academic warning?
+Correct reply:
+{"reasoning": "Evidence 1 states the rule directly.",
+ "answer": "A student is placed on academic warning when their CGPA falls below 2.00 [rules.pdf / 2 Academic Warning].",
+ "citations": [{"source": "rules.pdf", "section": "2 Academic Warning", "page": null}],
+ "answered_from_context": true, "confidence": "high"}
+
+If you used ANY evidence passage for your answer, answered_from_context MUST be true and
+`citations` MUST list those passages with their exact source and section. Only when no
+passage answers the question is answered_from_context false (and citations empty)."""
 
 
 def build_messages(question: str, passages: list[Passage]) -> list[dict[str, str]]:

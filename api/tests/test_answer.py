@@ -184,3 +184,25 @@ def test_slightly_reworded_citations_resolve_to_the_retrieved_passage() -> None:
     assert Citation(source="grading-page.html", section="Grading Policy", page=1) in kept
     assert Citation(source="handbook.pdf", section="1.21 Attendance", page=4) in kept
     assert dropped == 1                      # the document we never retrieved
+
+
+def test_a_retrieval_crash_is_a_fallback_not_a_500() -> None:
+    class Broken(FakeRetriever):
+        def retrieve(self, question: str, k: int) -> list[Passage]:
+            raise RuntimeError("chroma went away")
+
+    r = pipeline.answer_question("What is the attendance rule?", Broken([]),
+                                 FakeProvider([]), get_settings())
+    assert r.answered_from_context is False and r.retrieved == []
+
+
+def test_an_unexpected_generation_error_is_a_fallback_not_a_500() -> None:
+    provider = FakeProvider([RuntimeError("weird"), RuntimeError("weird")])
+    r = pipeline.answer_question("What is the attendance rule?", FakeRetriever([_passage()]),
+                                 provider, get_settings())
+    assert r.answered_from_context is False and provider.calls == 2
+
+
+def test_the_prompt_shows_a_worked_example_of_a_grounded_answer() -> None:
+    system = build_messages("q", [_passage()])[0]["content"]
+    assert '"answered_from_context": true' in system and "MUST be true" in system

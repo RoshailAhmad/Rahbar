@@ -52,6 +52,9 @@ def _generate_with_retry(provider: LLMProvider, question: str,
         except (ValidationError, ValueError, KeyError, httpx.HTTPError) as exc:
             log.warning("generation failed", extra={"attempt": attempt,
                                                     "error": f"{type(exc).__name__}: {exc}"})
+        except Exception as exc:  # anything else: still never a 500
+            log.exception("generation crashed", extra={"attempt": attempt,
+                                                       "error": f"{type(exc).__name__}: {exc}"})
     metrics.FALLBACKS.inc()
     return fallback(), True
 
@@ -99,8 +102,13 @@ def answer_question(
             metrics.CACHE_MISSES.inc()
 
     # 3-4. Retrieve.
-    with metrics.RETRIEVAL.time():
-        passages = retriever.retrieve(question, k=settings.top_k)
+    try:
+        with metrics.RETRIEVAL.time():
+            passages = retriever.retrieve(question, k=settings.top_k)
+    except Exception as exc:  # Chroma or the embedding call failed: answer safely
+        log.exception("retrieval failed", extra={"error": f"{type(exc).__name__}: {exc}"})
+        metrics.FALLBACKS.inc()
+        return _response(fallback(), [], provider)
     # TOP_K passages are retrieved (and reported, so recall@5 can be measured), but only
     # the best LLM_PASSAGES that clear the relevance floor go to the model: a small model
     # on a CPU reads ~18 tokens/s, so every extra passage costs seconds.
