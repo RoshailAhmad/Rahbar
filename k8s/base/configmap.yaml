@@ -10,7 +10,7 @@ data:
   # Which implementations to load
   RETRIEVER: "chroma"
   LLM_PROVIDER: "ollama-host"
-  LLM_MODEL: "llama3.2:1b"
+  LLM_MODEL: "qwen2.5:1.5b"
   OLLAMA_URL: "http://host.minikube.internal:11434"
   HOSTED_BASE_URL: ""
 
