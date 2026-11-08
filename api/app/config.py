@@ -41,6 +41,16 @@ class Settings:
     hosted_base_url: str = ""        # e.g. an OpenAI-compatible endpoint
     llm_api_key: str = field(default="", repr=False)   # from the Secret; never log it
 
+    # Grounding and cache (sections 3.3, 3.4)
+    relevance_floor: float = 0.35    # RELEVANCE_FLOOR: below this nothing counts as evidence
+    cache_threshold: float = 0.92    # CACHE_THRESHOLD: cosine similarity for a cache hit
+    cache_ttl_seconds: int = 86400   # CACHE_TTL_SECONDS: entries expire after a day anyway
+    redis_host: str = "redis"
+    redis_port: int = 6379
+    llm_timeout_seconds: float = 120.0   # LLM_TIMEOUT_SECONDS
+    llm_num_ctx: int = 4096              # LLM_NUM_CTX: context window asked of Ollama
+    llm_passages: int = 3                # LLM_PASSAGES: best N retrieved passages sent to the model
+
     log_level: str = "INFO"
 
 
@@ -58,5 +68,13 @@ def get_settings() -> Settings:
         ollama_url=os.environ.get("OLLAMA_URL", "http://host.minikube.internal:11434"),
         hosted_base_url=os.environ.get("HOSTED_BASE_URL", ""),
         llm_api_key=os.environ.get("LLM_API_KEY", ""),
+        relevance_floor=_float("RELEVANCE_FLOOR", 0.35),
+        cache_threshold=_float("CACHE_THRESHOLD", 0.92),
+        cache_ttl_seconds=_int("CACHE_TTL_SECONDS", 86400),
+        redis_host=os.environ.get("REDIS_HOST", "redis"),
+        redis_port=_int("REDIS_PORT", 6379),
+        llm_timeout_seconds=_float("LLM_TIMEOUT_SECONDS", 120.0),
+        llm_num_ctx=_int("LLM_NUM_CTX", 4096),
+        llm_passages=_int("LLM_PASSAGES", 3),
         log_level=os.environ.get("LOG_LEVEL", "INFO"),
     )

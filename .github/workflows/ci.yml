@@ -1,0 +1,139 @@
+name: ci
+
+# Every pull request into main, and every push to dev (section 6).
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [dev]
+
+# Least privilege: CI only reads the repository. It never pushes images.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r api/requirements-dev.txt -r indexer/requirements-dev.txt
+      - name: ruff
+        run: ruff check api indexer eval corpus
+      - name: mypy
+        run: |
+          cd api && mypy app
+          cd ../indexer && mypy pipeline
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r api/requirements-dev.txt -r indexer/requirements-dev.txt
+      - name: pytest api (stub provider, no network, coverage >= 60%)
+        run: cd api && pytest -q --cov=app --cov-report=term --cov-fail-under=60
+      - name: pytest indexer
+        run: cd indexer && pytest -q
+
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install kubeconform
+        run: |
+          curl -fsSL --retry 5 --retry-delay 3 -o kubeconform.tgz \
+            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar xzf kubeconform.tgz kubeconform
+          ./kubeconform -v
+      - name: kustomize build | kubeconform -strict
+        run: |
+          kubectl version --client
+          for overlay in prod dev ci ephemeral; do
+            echo "== $overlay"
+            kubectl kustomize k8s/overlays/$overlay | ./kubeconform -strict -summary
+          done
+
+  build:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [api, indexer, ui]
+    steps:
+      - uses: actions/checkout@v4
+      - run: make stage-corpus
+      - name: build (no push on CI)
+        run: docker build -t rahbar-${{ matrix.component }}:ci ${{ matrix.component }}
+
+  scan:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [api, indexer, ui]
+    steps:
+      - uses: actions/checkout@v4
+      - run: make stage-corpus
+      - run: docker build -t rahbar-${{ matrix.component }}:scan ${{ matrix.component }}
+      - name: Trivy (fail on HIGH/CRITICAL with a fix available)
+        run: |
+          IMG=aquasec/trivy:0.58.1
+          docker pull "$IMG" || { IMG=aquasec/trivy:latest; docker pull "$IMG"; }
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$IMG" image \
+            --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            --pkg-types os,library --no-progress rahbar-${{ matrix.component }}:scan
+
+  e2e-eval:
+    needs: [test, manifests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx==0.28.1 pyyaml==6.0.2
+      - name: kind cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: kind
+      - name: build the three images and load them into kind
+        run: |
+          make stage-corpus
+          for c in api indexer ui; do docker build -t rahbar-$c:ci $c; done
+          kind load docker-image rahbar-api:ci rahbar-indexer:ci rahbar-ui:ci --name kind
+      - name: deploy, run the indexer Job on the fixture corpus, wait for the rollout
+        run: bash scripts/e2e-cluster.sh ci
+      - name: eval gate (section 5.4) through the Ingress
+        run: |
+          python eval/run_eval.py --api http://127.0.0.1:8081 --host rahbar.local \
+            --golden eval/fixtures/golden.fixture.yaml \
+            --baseline eval/fixtures/baseline.fixture.json \
+            --out e2e-results.json
+      - name: results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: e2e-results.json
+          if-no-files-found: ignore
+      - name: diagnostics
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide || true
+          kubectl describe pods -n rahbar | tail -80 || true
+          for d in api; do kubectl logs -n rahbar deploy/$d --tail=60 || true; done
+          docker logs ollama --tail 30 || true

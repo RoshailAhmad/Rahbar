@@ -32,8 +32,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.settings = settings
     app.state.retriever = get_retriever(settings)
     app.state.provider = get_provider(settings)
-    # STARTER-TODO(4.4): compare the collection's embedding-model metadata with
-    # settings.embed_model here, and make /readyz fail on a mismatch.
+    # The embedding pin (4.4) is enforced by /readyz (routes/health.py): a pod whose
+    # EMBED_MODEL differs from the index's embed_model metadata never becomes ready.
     # This process only reads the index. The indexer Job writes it.
     log.info(
         "api started",

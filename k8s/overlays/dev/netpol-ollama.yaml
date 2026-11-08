@@ -1,0 +1,24 @@
+# Egress from api and indexer to Ollama on your laptop (ollama-host mode).
+# host.minikube.internal is the host; find its IP with:
+#   minikube ssh "grep host.minikube.internal /etc/hosts"
+# <YOUR-IP> is the usual value with the docker driver. If yours differs, change it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-to-ollama-host
+  namespace: rahbar
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: ["api", "indexer"]
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.65.254/32
+      ports:
+        - protocol: TCP
+          port: 11434

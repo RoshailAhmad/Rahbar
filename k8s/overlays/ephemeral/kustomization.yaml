@@ -1,0 +1,22 @@
+# cd.yml's deploy job: the prod overlay (Docker Hub images pinned to the commit SHA) on
+# an ephemeral kind cluster, indexing the fixture corpus with Ollama on the runner, then
+# a smoke test through the Ingress. cd.yml replaces OLLAMA_HOST_IP before applying.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../prod
+  - netpol-ollama.yaml
+patches:
+  - target:
+      kind: ConfigMap
+      name: rahbar-config
+    patch: |-
+      - op: replace
+        path: /data/CORPUS_DIR
+        value: /fixtures
+      - op: replace
+        path: /data/LLM_PROVIDER
+        value: stub
+      - op: replace
+        path: /data/OLLAMA_URL
+        value: http://OLLAMA_HOST_IP:11434

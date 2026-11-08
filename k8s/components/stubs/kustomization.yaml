@@ -1,0 +1,35 @@
+# Week-1 mode (STARTER.md): stub retriever, stub LLM and the dummy index, so the whole
+# cluster can be proven before the real RAG pipeline exists. The dummy index records
+# its model as dummy-768, so the pin agrees.
+# Remove this component from overlays/dev once Part 2 lands; with EMBED_MODEL back to
+# the real model and the index NOT rebuilt, the api must sit at 0/1 READY (section 4.4).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target:
+      kind: ConfigMap
+      name: rahbar-config
+    patch: |-
+      - op: replace
+        path: /data/RETRIEVER
+        value: stub
+      - op: replace
+        path: /data/LLM_PROVIDER
+        value: stub
+      - op: replace
+        path: /data/EMBED_MODEL
+        value: dummy-768
+  - target:
+      kind: Job
+      name: indexer
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args
+        value: ["--dummy"]
+  - target:
+      kind: CronJob
+      name: reindex
+    patch: |-
+      - op: add
+        path: /spec/jobTemplate/spec/template/spec/containers/0/args
+        value: ["--dummy"]

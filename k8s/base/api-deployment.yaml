@@ -1,0 +1,99 @@
+# The api: reads the index on every question, never writes it (section 4.2).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: rahbar
+  labels:
+    app: api
+spec:
+  # The HPA (hpa.yaml) owns the count from here on: min 3, max 8.
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      serviceAccountName: api
+      automountServiceAccountToken: false
+      # preStop sleep (5 s) + uvicorn graceful drain (20 s) fits inside 30 s.
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: rahbar-api:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: rahbar-config
+            - secretRef:
+                name: rahbar-secret
+                # Only hosted mode needs the key; the pod still starts without it.
+                optional: true
+          # Finished booting? Liveness and readiness wait while this runs.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          # Still alive? Touches no dependency, so a slow Chroma cannot cause a restart storm.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+            failureThreshold: 3
+          # Can it take traffic? Chroma reachable, collection non-empty, Redis reachable,
+          # embedding pin matches. Failure removes the pod from the Service, no restart.
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3 
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              # Keep serving while the endpoint removal propagates to the Ingress,
+              # so no request hits a pod that has stopped accepting connections.
+              exec:
+                command: ["sleep", "5"]
+          resources:
+            # Starting values: replace with numbers justified by `kubectl top pods`
+            # (docs/evidence/kubectl-top.txt).
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

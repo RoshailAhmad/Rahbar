@@ -1,0 +1,27 @@
+# Utilisation = usage / requests.cpu, so the api MUST set requests.cpu or this reads
+# <unknown>/70% forever. Needs `minikube addons enable metrics-server`.
+# Note (ENGINEERING-NOTES Q3): while the api waits on the LLM its CPU stays low, so this
+# scales on the wrong signal for a generation service; in-flight requests or queue depth
+# via a custom/external metric would be the right one.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+  namespace: rahbar
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  minReplicas: 3
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 120

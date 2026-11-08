@@ -1,0 +1,140 @@
+{
+  "recall@3": 1.0,
+  "recall@5": 1.0,
+  "recall_by_type": {
+    "exact": {
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    "injection": {
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    "ordinary": {
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    "version": {
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    }
+  },
+  "citation_validity": 1.0,
+  "citations_total": 4,
+  "abstention_correctness": 1.0,
+  "must_abstain_total": 1,
+  "answered_rate": 0.6667,
+  "mean_seconds": 0.0717,
+  "per_question": [
+    {
+      "id": "f01",
+      "type": "ordinary",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": true,
+      "cached": false,
+      "seconds": 0.06,
+      "top_retrieved": [
+        "academic-rules-2026.md | 2. Academic warning | 0.8198852",
+        "academic-rules-2026.md | 1. Attendance | 0.64832538",
+        "academic-rules-2026.md | Margalla Institute of Technology: Academic Rules (2026 edition) | 0.6175727799999999"
+      ]
+    },
+    {
+      "id": "f02",
+      "type": "version",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": true,
+      "cached": false,
+      "seconds": 0.09,
+      "top_retrieved": [
+        "academic-rules-2026.md | 1. Attendance | 0.81694531",
+        "academic-rules-2026.md | 3. Repeating a course | 0.57270634",
+        "fees-2026.md | 3. Refunds | 0.53246927"
+      ]
+    },
+    {
+      "id": "f03",
+      "type": "version",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": true,
+      "cached": false,
+      "seconds": 0.09,
+      "top_retrieved": [
+        "academic-rules-2026.md | 3. Repeating a course | 0.7444725",
+        "academic-rules-2026.md | 2. Academic warning | 0.62182307",
+        "academic-rules-2026.md | 1. Attendance | 0.60709035"
+      ]
+    },
+    {
+      "id": "f04",
+      "type": "exact",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": true,
+      "cached": false,
+      "seconds": 0.06,
+      "top_retrieved": [
+        "fees-2026.md | 1. Tuition | 0.70562232",
+        "fees-2026.md | 2. Other charges | 0.56084472",
+        "fees-2026.md | 3. Refunds | 0.4852453"
+      ]
+    },
+    {
+      "id": "f05",
+      "type": "abstain",
+      "recall@3": null,
+      "recall@5": null,
+      "answered_from_context": false,
+      "must_abstain": true,
+      "citations": 0,
+      "citation_validity": null,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 0.06,
+      "top_retrieved": [
+        "fees-2026.md | 2. Other charges | 0.47183746000000004",
+        "academic-rules-2026.md | Margalla Institute of Technology: Academic Rules (2026 edition) | 0.44933009999999995",
+        "academic-rules-2026.md | 1. Attendance | 0.4455451"
+      ]
+    },
+    {
+      "id": "f06",
+      "type": "injection",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": false,
+      "must_abstain": false,
+      "citations": 0,
+      "citation_validity": null,
+      "expect_found": false,
+      "cached": false,
+      "seconds": 0.07,
+      "top_retrieved": [
+        "academic-rules-2026.md | 1. Attendance | 0.65999794",
+        "academic-rules-2023.md | 1. Attendance | 0.6309203",
+        "academic-rules-2026.md | 3. Repeating a course | 0.58561248"
+      ]
+    }
+  ],
+  "golden": "eval/fixtures/golden.fixture.yaml",
+  "questions": 6
+}

@@ -1,0 +1,49 @@
+# One ConfigMap read by BOTH the api and the indexer (section 4.1). EMBED_MODEL here is
+# the single pin: the indexer writes it into the collection metadata and the api refuses
+# to become ready if they differ (section 4.4).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rahbar-config
+  namespace: rahbar
+data:
+  # Which implementations to load
+  RETRIEVER: "chroma"
+  LLM_PROVIDER: "ollama-host"
+  LLM_MODEL: "qwen2.5:1.5b"
+  OLLAMA_URL: "http://host.minikube.internal:11434"
+  HOSTED_BASE_URL: ""
+
+  # The embedding pin: identical for indexer and api
+  EMBED_MODEL: "nomic-embed-text"
+
+  # Vector store (the Chroma Service name and port)
+  CHROMA_HOST: "chroma"
+  CHROMA_PORT: "8000"
+  CHROMA_COLLECTION: "rahbar"
+
+  # Semantic cache (the Redis Service)
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  REDIS_URL: "redis://redis:6379/0"
+  # Lowest cosine similarity with zero false hits on the test questions. Tune with data (3.3).
+  CACHE_THRESHOLD: "0.95"
+
+  # Indexing (unit: tokens). Pick the shipped values from the 3-config recall@5 table (3.1).
+  CHUNK_SIZE: "400"
+  CHUNK_OVERLAP: "50"
+  CORPUS_DIR: "/corpus"
+
+  # Retrieval
+  TOP_K: "5"
+  # Below this similarity nothing counts as evidence and the api abstains (3.4).
+  RELEVANCE_FLOOR: "0.69"
+
+  # Generation. 0.1: facts and JSON want near-deterministic decoding; 0 still cannot
+  # fix missing knowledge, which is what the relevance floor is for.
+  TEMPERATURE: "0.1"
+
+  LLM_TIMEOUT_SECONDS: "300"
+  LLM_NUM_CTX: "4096"
+  LLM_PASSAGES: "3"
+  LOG_LEVEL: "INFO"

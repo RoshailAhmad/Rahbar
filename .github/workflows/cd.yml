@@ -1,0 +1,80 @@
+name: cd
+
+# Every push to main (only reachable through a reviewed, green pull request).
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r api/requirements-dev.txt -r indexer/requirements-dev.txt
+      - run: ruff check api indexer eval corpus
+      - run: cd api && pytest -q --cov=app --cov-fail-under=60
+      - run: cd indexer && pytest -q
+
+  build-push:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [api, indexer, ui]
+    steps:
+      - uses: actions/checkout@v4
+      - run: make stage-corpus
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: build and push, tagged by commit SHA (never :latest)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.component }}
+          push: true
+          tags: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/rahbar-${{ matrix.component }}:${{ github.sha }}
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: ephemeral kind cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: kind
+      - name: pin the prod overlay to this commit's images
+        run: |
+          sed -i "s/newTag: set-by-cd/newTag: ${{ github.sha }}/" k8s/overlays/prod/kustomization.yaml
+          grep -n "newTag" k8s/overlays/prod/kustomization.yaml
+      - name: deploy (indexer Job, then kubectl rollout status)
+        run: bash scripts/e2e-cluster.sh ephemeral
+      - name: smoke test through the Ingress
+        run: |
+          echo "running: $(kubectl get deploy api -n rahbar -o jsonpath='{.spec.template.spec.containers[0].image}')"
+          curl -sf -H "Host: rahbar.local" http://127.0.0.1:8081/ | grep -qi "<html"
+          body=$(curl -sf -X POST http://127.0.0.1:8081/api/ask -H "Host: rahbar.local" \
+            -H "Content-Type: application/json" \
+            -d '{"question":"When is a student placed on academic warning?"}')
+          echo "$body"
+          echo "$body" | python3 -c "import json,sys; r=json.load(sys.stdin); assert r['request_id'] and isinstance(r['retrieved'], list), r"
+      - name: diagnostics
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide || true
+          kubectl describe pods -n rahbar | tail -80 || true
+          kubectl logs -n rahbar deploy/api --tail=60 || true
