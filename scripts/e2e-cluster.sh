@@ -10,12 +10,12 @@ set -euo pipefail
 OVERLAY=${1:?usage: e2e-cluster.sh <overlay>}
 NS=rahbar
 
-echo "::group::Ollama on the runner"
-curl -fsSL https://ollama.com/install.sh | sh
-sudo systemctl stop ollama 2>/dev/null || true
-OLLAMA_HOST=0.0.0.0:11434 nohup ollama serve > /tmp/ollama.log 2>&1 &
+echo "::group::Ollama on the runner (container, published on 0.0.0.0:11434)"
+OLLAMA_IMG=ollama/ollama:0.5.7
+docker pull "$OLLAMA_IMG" || { OLLAMA_IMG=ollama/ollama:latest; docker pull "$OLLAMA_IMG"; }
+docker run -d --name ollama -p 11434:11434 "$OLLAMA_IMG"
 for _ in $(seq 1 60); do curl -sf http://localhost:11434 >/dev/null && break; sleep 1; done
-ollama pull nomic-embed-text
+docker exec ollama ollama pull nomic-embed-text
 echo "::endgroup::"
 
 GW=$(docker network inspect kind -f '{{range .IPAM.Config}}{{.Gateway}} {{end}}' \
