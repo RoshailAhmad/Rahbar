@@ -27,3 +27,6 @@ venv/
 # Corpus staged into the indexer build context by `make stage-corpus`
 indexer/corpus/
 indexer/fixtures/
+
+.chroma-venv/
+chroma-data/
