@@ -13,7 +13,7 @@ section, prefers the current version of a policy over the repealed one, and says
 an indexer Job writes a Chroma vector store, a 3-replica FastAPI service reads it, Redis
 caches answers, and CI fails the build when retrieval quality drops.
 
-![RAHBAR answering with a citation](docs/evidence/<screenshot>.png)
+![RAHBAR answering with a citation](docs/evidence/green-merge.png)
 
 ## Architecture
 Browser ─► Ingress (rahbar.local)
