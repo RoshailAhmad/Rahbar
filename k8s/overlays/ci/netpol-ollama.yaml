@@ -1,0 +1,22 @@
+# CI only: api and indexer may reach Ollama on the GitHub runner (the kind network's
+# gateway, always inside 172.16.0.0/12) for embeddings.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-to-ollama-runner
+  namespace: rahbar
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: ["api", "indexer"]
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 172.16.0.0/12
+      ports:
+        - protocol: TCP
+          port: 11434

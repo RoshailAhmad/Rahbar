@@ -1,12 +1,14 @@
-# The e2e-eval CI job (section 6): a kind/k3d cluster, images loaded with
-# `kind load docker-image rahbar-*:ci`, the indexer run on the three fixture documents
-# baked into the image at /fixtures, and the stub LLM (no network, no model).
-# How CI gets embeddings (Ollama on the runner, or a stub embedder) is Part 2/3's call;
-# if it is Ollama on the runner, add an egress policy like overlays/dev/netpol-ollama.yaml.
+# The e2e-eval CI job (section 6): a kind cluster on the GitHub runner, images built in
+# the job and loaded with `kind load docker-image rahbar-*:ci`, the indexer run on the
+# three fixture documents baked into the image at /fixtures, embeddings from Ollama on
+# the runner (nomic-embed-text, the same pin), and the stub generator: recall, citation
+# validity and abstention are what the gate measures, and none needs a real model.
+# ci.yml replaces OLLAMA_HOST_IP with the kind network's gateway before applying.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
+  - netpol-ollama.yaml
 patches:
   - target:
       kind: ConfigMap
@@ -18,6 +20,9 @@ patches:
       - op: replace
         path: /data/LLM_PROVIDER
         value: stub
+      - op: replace
+        path: /data/OLLAMA_URL
+        value: http://OLLAMA_HOST_IP:11434
 images:
   - name: rahbar-api
     newTag: ci
