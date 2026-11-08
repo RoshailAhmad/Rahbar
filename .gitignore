@@ -30,3 +30,6 @@ indexer/fixtures/
 
 .chroma-venv/
 chroma-data/
+
+.chroma-venv/
+chroma-data/
