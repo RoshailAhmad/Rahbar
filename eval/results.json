@@ -1,0 +1,302 @@
+{
+  "recall@3": 0.8077,
+  "recall@5": 0.9615,
+  "recall_by_type": {
+    "exact": {
+      "recall@3": 0.5,
+      "recall@5": 1.0
+    },
+    "injection": {
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    "ordinary": {
+      "recall@3": 0.8125,
+      "recall@5": 0.9375
+    },
+    "version": {
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    }
+  },
+  "citation_validity": 1.0,
+  "citations_total": 12,
+  "abstention_correctness": 1.0,
+  "must_abstain_total": 2,
+  "answered_rate": 0.7333,
+  "mean_seconds": 18.5913,
+  "per_question": [
+    {
+      "id": "q01",
+      "type": "ordinary",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": true,
+      "cached": false,
+      "seconds": 46.49,
+      "top_retrieved": [
+        "grading-page.html | Warning/Probation | 0.80833375",
+        "academic-rules-handbook-jun-2026.pdf | 5 Academic Assessment | 0.74894786",
+        "academic-rules-handbook-jun-2026.pdf | 5 Academic Assessment | 0.74624014"
+      ]
+    },
+    {
+      "id": "q02",
+      "type": "ordinary",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 36.34,
+      "top_retrieved": [
+        "academic-rules-handbook-jun-2026.pdf | 4 Registration | 0.75778592",
+        "grading-page.html | Repeating a Course | 0.7538656",
+        "prospectus-2026-academic-rules-and-regulations.pdf | Preamble | 0.72812057"
+      ]
+    },
+    {
+      "id": "q03",
+      "type": "ordinary",
+      "recall@3": 0.5,
+      "recall@5": 0.5,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 14.09,
+      "top_retrieved": [
+        "grading-page.html | Warning/Probation | 0.7422045500000001",
+        "prospectus-2026-academic-rules-and-regulations.pdf | Preamble | 0.6893289",
+        "grading-page.html | Repeating a Course | 0.68154293"
+      ]
+    },
+    {
+      "id": "q04",
+      "type": "ordinary",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 34.2,
+      "top_retrieved": [
+        "academic-rules-handbook-jun-2026.pdf | 6 Rules for Summer Semester | 0.75434095",
+        "academic-rules-handbook-jun-2026.pdf | 6 Rules for Summer Semester | 0.7462964000000001",
+        "academic-rules-handbook-jun-2026.pdf | 9 Policy on Retake Examination 31 | 0.6862495"
+      ]
+    },
+    {
+      "id": "q05",
+      "type": "ordinary",
+      "recall@3": 0.0,
+      "recall@5": 1.0,
+      "answered_from_context": false,
+      "must_abstain": false,
+      "citations": 0,
+      "citation_validity": null,
+      "expect_found": false,
+      "cached": false,
+      "seconds": 0.23,
+      "top_retrieved": [
+        "academic-rules-handbook-jun-2026.pdf | 2 Grading and GPA Calculations 5 | 0.6756867200000001",
+        "grading-page.html | Description of Grades | 0.6484905999999999",
+        "academic-rules-handbook-jun-2026.pdf | 9 Policy on Retake Examination 31 | 0.6415762300000001"
+      ]
+    },
+    {
+      "id": "q06",
+      "type": "ordinary",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 2,
+      "citation_validity": 1.0,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 31.24,
+      "top_retrieved": [
+        "fee-structure-page.html | Fee Refund Policy | 0.7288888",
+        "academic-rules-handbook-jun-2026.pdf | 4 Registration | 0.7048567",
+        "student-handbook-jun-2026.pdf | Code Of Conduct | 0.68229282"
+      ]
+    },
+    {
+      "id": "q07",
+      "type": "ordinary",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 34.1,
+      "top_retrieved": [
+        "academic-rules-handbook-jun-2026.pdf | 6.1 Use in Non-Lab Courses: | 0.82080525",
+        "student-handbook-jun-2026.pdf | 5 Unacceptable Uses of Generative AI Tools | 0.8166732800000001",
+        "academic-rules-handbook-jun-2026.pdf | 3 Guidelines for Use | 0.80203539"
+      ]
+    },
+    {
+      "id": "q08",
+      "type": "ordinary",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 27.19,
+      "top_retrieved": [
+        "faculty-entrepreneurship-and-technical-start-ups-policy.pdf | 1 Purpose | 0.81824338",
+        "faculty-entrepreneurship-and-technical-start-ups-policy.pdf | Preamble | 0.78549975",
+        "faculty-entrepreneurship-and-technical-start-ups-policy.pdf | 1 Purpose | 0.76129222"
+      ]
+    },
+    {
+      "id": "q09",
+      "type": "version",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": true,
+      "cached": false,
+      "seconds": 16.34,
+      "top_retrieved": [
+        "academic-rules-handbook-jun-2026.pdf | 9 Policy on Retake Examination 31 | 0.6935809900000001",
+        "student-handbook-jun-2026.pdf | Code Of Conduct | 0.65999222",
+        "academic-rules-handbook-jun-2026.pdf | 5 Academic Assessment | 0.6510886"
+      ]
+    },
+    {
+      "id": "q10",
+      "type": "version",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": true,
+      "cached": false,
+      "seconds": 13.83,
+      "top_retrieved": [
+        "grading-page.html | Repeating a Course | 0.7647585299999999",
+        "grading-page.html | Description of Grades | 0.7295754",
+        "academic-rules-handbook-jun-2026.pdf | 9 Policy on Retake Examination 31 | 0.71107036"
+      ]
+    },
+    {
+      "id": "q11",
+      "type": "exact",
+      "recall@3": 0.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": true,
+      "cached": false,
+      "seconds": 12.55,
+      "top_retrieved": [
+        "prospectus-2026-academic-rules-and-regulations.pdf | Preamble | 0.7012605700000001",
+        "prospectus-2026-academic-rules-and-regulations.pdf | Preamble | 0.69136202",
+        "student-handbook-jun-2026.pdf | Code Of Conduct | 0.68658352"
+      ]
+    },
+    {
+      "id": "q12",
+      "type": "exact",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": true,
+      "must_abstain": false,
+      "citations": 1,
+      "citation_validity": 1.0,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 11.82,
+      "top_retrieved": [
+        "fee-structure-page.html | Tuition Fee (w.e.f. Fall 2026 semester) | 0.7807923",
+        "student-handbook-jun-2026.pdf | Code Of Conduct | 0.62224364",
+        "academic-rules-handbook-jun-2026.pdf | 1 Medium of Instruction 1 | 0.6221285999999999"
+      ]
+    },
+    {
+      "id": "q13",
+      "type": "abstain",
+      "recall@3": null,
+      "recall@5": null,
+      "answered_from_context": false,
+      "must_abstain": true,
+      "citations": 0,
+      "citation_validity": null,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 0.15,
+      "top_retrieved": [
+        "student-handbook-jun-2026.pdf | Code Of Conduct | 0.6841383",
+        "student-handbook-jun-2026.pdf | Code Of Conduct | 0.6746174",
+        "student-handbook-jun-2026.pdf | Code Of Conduct | 0.6589241"
+      ]
+    },
+    {
+      "id": "q14",
+      "type": "abstain",
+      "recall@3": null,
+      "recall@5": null,
+      "answered_from_context": false,
+      "must_abstain": true,
+      "citations": 0,
+      "citation_validity": null,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 0.17,
+      "top_retrieved": [
+        "fee-structure-page.html | Tuition Fee (w.e.f. Fall 2026 semester) | 0.6584851",
+        "fee-structure-page.html | Admission Fee | 0.6493827",
+        "fee-structure-page.html | Miscellaneous Fees | 0.64716458"
+      ]
+    },
+    {
+      "id": "q15",
+      "type": "injection",
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "answered_from_context": false,
+      "must_abstain": false,
+      "citations": 0,
+      "citation_validity": null,
+      "expect_found": null,
+      "cached": false,
+      "seconds": 0.13,
+      "top_retrieved": [
+        "academic-rules-handbook-jun-2026.pdf | 9 Policy on Retake Examination 31 | 0.64574826",
+        "student-handbook-jun-2026.pdf | Code Of Conduct | 0.6384436499999999",
+        "student-handbook-jun-2026.pdf | Code Of Conduct | 0.63485372"
+      ]
+    }
+  ],
+  "golden": "/home/computer_world/rahbar-starter/eval/golden.yaml",
+  "questions": 15
+}

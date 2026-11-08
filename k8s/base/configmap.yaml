@@ -27,7 +27,7 @@ data:
   REDIS_PORT: "6379"
   REDIS_URL: "redis://redis:6379/0"
   # Lowest cosine similarity with zero false hits on the test questions. Tune with data (3.3).
-  CACHE_THRESHOLD: "0.92"
+  CACHE_THRESHOLD: "0.95"
 
   # Indexing (unit: tokens). Pick the shipped values from the 3-config recall@5 table (3.1).
   CHUNK_SIZE: "400"
