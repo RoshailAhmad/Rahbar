@@ -70,7 +70,8 @@ one; overlap never crosses a section boundary. The heading is prefixed to each c
 A real bug we fixed: the first heading rule accepted numbered list sentences such as "14
 Political activities or campaigns are strictly prohibited within" as section titles. A
 numbered line is now a heading only if it reads like a title (mostly capitalised words,
-not ending on "within", "the", ...). Found from a citation in the UI.
+not ending on "within", "the", ...). Found from a citation in the UI. With the fix, the
+same corpus at 400/50 produces 415 chunks instead of 569: fewer false section breaks.
 
 **Known limitations of the heading rule**
 - Table-of-contents lines end in a page number and are taken as headings, e.g.
@@ -82,21 +83,33 @@ not ending on "within", "the", ...). Found from a citation in the UI.
   "5 Academic Assessment". Much of the prospectus falls under "Preamble" and much of the
   Student Handbook under one large "Code Of Conduct" section.
 
-Recall@k only measures retrieval, so the three chunking runs used the stub generator
-(`LLM_PROVIDER=stub`), which takes seconds per run instead of a minute per question.
+Recall@k only measures retrieval, so the 250/30 and 600/80 runs used the stub generator
+(`LLM_PROVIDER=stub`), which takes seconds per run instead of a minute per question. Each
+run re-indexed the full corpus (OCR included) inside the cluster, then ran all 15 golden
+questions.
 
-Shipped: size [ ], overlap [ ] words, giving [ ] chunks.
-Storage amplification = stored words / original words = [ ] / [ ] = **[ ]** (the overlap
-and the heading prefix push it above 1; measured locally, where the two scanned PDFs
-contribute almost no words because there is no OCR on that laptop).
+| Size (words) | Overlap (words) | recall@3 | recall@5 | Chunks stored | CI gate |
+| --- | --- | --- | --- | --- | --- |
+| 250 | 30 | 0.88 | 0.92 | 562 | passed |
+| **400** | **50** | 0.81 | **0.96** | 415 | passed (baseline) |
+| 600 | 80 | 0.65 | 0.81 | 353 | **failed**: recall@5 more than 5 points below baseline |
 
-| Size (words) | Overlap (words) | recall@3 | recall@5 | Chunks stored |
-| --- | --- | --- | --- | --- |
-| 250 | 30 | [ ] | [ ] | [ ] |
-| 400 | 50 | [ ] | [ ] | [ ] |
-| 600 | 80 | [ ] | [ ] | [ ] |
+**Shipped: size 400, overlap 50 words, giving 415 chunks.**
 
-Why we shipped [ ]: [one or two sentences from the numbers].
+**Why we shipped 400/50.** It has the highest recall@5 (0.96), the number the CI gate
+protects and the number that decides whether the right passage reaches the model at all
+(we retrieve 5). 250/30 ranks the right chunk higher more often (recall@3 0.88), but it
+splits clauses across more pieces, so some questions lose their second relevant section
+from the top 5 (recall@5 0.92), and it stores 35% more chunks (562 vs 415). 600/80 is
+clearly worse on both: one 600-word chunk mixes several clauses into one vector, so the
+specific clause stops standing out, and the gate failed it. If we sent only the top 3
+passages to the model and measured nothing else, 250/30 would be the better choice; with 5
+retrieved, 400/50 wins.
+
+Storage amplification = stored words / original words = 87,923 / 79,073 =
+**1.11** at 400/50. The overlap (50 words per extra chunk) and the heading prefixed to
+every chunk push it above 1. Measured locally without OCR, so the two scanned PDFs
+contribute almost no words to either side.
 
 ## Embedding
 - Model: **nomic-embed-text**, **768** dimensions, served by Ollama.
@@ -134,6 +147,8 @@ Why we shipped [ ]: [one or two sentences from the numbers].
   document. The citation shown is rewritten to the retrieved chunk's exact source,
   section and page. Found when a correct answer was declined because the model reworded
   a section name.
+- Effect of TOP_K, measured: with TOP_K = 1, recall@3 and recall@5 both fell to 0.73 and
+  the answered rate to 0.60 (baseline 0.81 / 0.96 / 0.73); the gate failed.
 
 ## Generation
 - Ollama on the host, temperature 0.1, `format` = the Answer JSON schema, then Pydantic
@@ -141,21 +156,30 @@ Why we shipped [ ]: [one or two sentences from the numbers].
 - Measured on a laptop CPU: llama3.2:3b read prompts at ~18 tokens/s and generated at
   ~9 tokens/s; a 5-passage prompt (~3,200 tokens) took ~3.5 minutes and timed out.
   Asking Ollama for an 8,192-token context made it reload the model and time out too.
-- Shipped: [qwen2.5:1.5b / llama3.2:1b], 3 passages, LLM_NUM_CTX 4096, a 300 s timeout:
-  about [ ] s per answer. llama3.2:1b sometimes answered correctly but set
-  answered_from_context to false; a worked example in the prompt [and qwen2.5:1.5b]
-  fixed that.
+- Shipped: qwen2.5:1.5b, 3 passages, LLM_NUM_CTX 4096, a 300 s timeout: about 19 s per
+  question on average over the golden set, 12-46 s when the model actually runs (declines
+  below the relevance floor return in under a second). llama3.2:1b sometimes answered
+  correctly but set answered_from_context to false; a worked example in the prompt and
+  qwen2.5:1.5b fixed that.
+- At temperature 1.2 (failure analysis), three runs of the same question gave three
+  differently worded but correct answers ("below 2.00") with no validation failures:
+  schema-constrained decoding kept the JSON valid even at high temperature, and only the
+  wording drifted. We keep 0.1 because answers should be repeatable.
 
 ## Semantic cache
 Redis, keyed by `index_version` (see ADR 0003). Thresholds tried:
 
 | Threshold | Paraphrase hit? | False hit? |
 | --- | --- | --- |
-| 0.88 | [ ] | [ ] |
-| 0.92 | [ ] | [ ] |
-| 0.95 | [ ] | [ ] |
+| 0.88 | not tested | not tested: 0.92 already produced false hits |
+| 0.92 | yes | **yes**: q02, q03 and q04 were served q01's CGPA answer |
+| 0.95 | yes ("What CGPA..." vs "Which CGPA...") | no: all 15 golden questions got their own answers |
 
-Shipped [ ]: the lowest with zero false hits. The false hit that ruled out [ ]: [ ].
+Shipped 0.95: the lowest threshold we tried with zero false hits that still catches a real
+paraphrase. The false hit that ruled out 0.92: q02 (prerequisite), q03 (consecutive
+warning) and q04 (summer credit hours) were all served q01's cached CGPA answer, in under
+half a second each, because they share most of their wording ("student", "academic",
+"semester").
 
 ## Evaluation method
 A golden (source, section) pair matches a retrieved passage when the document is the same
