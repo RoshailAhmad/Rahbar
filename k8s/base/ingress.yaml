@@ -7,8 +7,8 @@ metadata:
   namespace: rahbar
   annotations:
     # Generation through a 3B model on a laptop can take a while.
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
 spec:
   ingressClassName: nginx
   rules:

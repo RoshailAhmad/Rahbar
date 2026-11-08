@@ -5,8 +5,6 @@ resources:
   - ../../base
   - netpol-ollama.yaml
 # Week 1: stubs + dummy index. Delete these two lines when the real pipeline is ready.
-components:
-  - ../../components/stubs
 # Images built locally and loaded with `make images` (minikube image load).
 images:
   - name: rahbar-api
@@ -15,3 +13,11 @@ images:
     newTag: dev
   - name: rahbar-indexer
     newTag: dev
+patches:
+  - target:
+      kind: ConfigMap
+      name: rahbar-config
+    patch: |-
+      - op: replace
+        path: /data/OLLAMA_URL
+        value: http://192.168.65.254:11434
