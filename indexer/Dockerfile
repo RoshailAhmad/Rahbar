@@ -13,7 +13,9 @@ RUN pip install -r requirements.txt
 
 FROM python:3.12.8-slim-bookworm
 # OCR for the scanned PDF (corpus property 3): tesseract + poppler for pdf2image.
+# OS patches first (Trivy fails CI on fixable HIGH/CRITICAL), then the OCR tools.
 RUN apt-get update \
+ && apt-get upgrade -y \
  && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng poppler-utils \
  && rm -rf /var/lib/apt/lists/*
 ENV PATH=/opt/venv/bin:$PATH \
