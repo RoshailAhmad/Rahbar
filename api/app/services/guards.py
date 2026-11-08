@@ -52,14 +52,48 @@ def fallback() -> Answer:
                   citations=[], answered_from_context=False, confidence="low")
 
 
-def valid_citations(answer: Answer, passages: list[Passage]) -> tuple[list[Citation], int]:
-    """Keep only citations that match a passage retrieved for THIS request.
+def _norm(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 
-    Returns (kept, dropped). A citation the retriever never returned is fabricated."""
-    retrieved = {(p.source, p.section): p for p in passages}
+
+def _source_key(source: str) -> str:
+    """'corpus/raw/Grading-Page.html' and 'grading page' name the same document."""
+    name = source.replace("\\", "/").rsplit("/", 1)[-1]
+    name = re.sub(r"\.(pdf|html?|md|txt)$", "", name, flags=re.IGNORECASE)
+    return _norm(name)
+
+
+def _resolve(c: Citation, passages: list[Passage]) -> Passage | None:
+    """The retrieved passage a citation refers to, or None if it names nothing retrieved.
+
+    Small models copy names imperfectly, so match on the normalised document name, then:
+    an exact (normalised) section, else a section that starts with the other (e.g. the
+    clause number "5.4" vs "5.4 Academic Warning"), else the only passage retrieved from
+    that document. A citation naming a document we did not retrieve never matches."""
+    same_doc = [p for p in passages if _source_key(p.source) == _source_key(c.source)]
+    if not same_doc:
+        return None
+    cited = _norm(c.section)
+    for p in same_doc:
+        if _norm(p.section) == cited:
+            return p
+    if cited:
+        for p in same_doc:
+            mine = _norm(p.section)
+            if mine.startswith(cited) or cited.startswith(mine):
+                return p
+    return same_doc[0] if len(same_doc) == 1 else None
+
+
+def valid_citations(answer: Answer, passages: list[Passage]) -> tuple[list[Citation], int]:
+    """Keep only citations that resolve to a passage retrieved for THIS request.
+
+    Each kept citation is rewritten with the retrieved passage's exact source, section
+    and page, so what the user sees always names a real retrieved chunk. A citation the
+    retriever never returned is fabricated and is dropped. Returns (kept, dropped)."""
     kept: list[Citation] = []
     for c in answer.citations:
-        hit = retrieved.get((c.source, c.section))
+        hit = _resolve(c, passages)
         if hit is None:
             continue
         citation = Citation(source=hit.source, section=hit.section, page=hit.page)

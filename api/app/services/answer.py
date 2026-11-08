@@ -101,7 +101,11 @@ def answer_question(
     # 3-4. Retrieve.
     with metrics.RETRIEVAL.time():
         passages = retriever.retrieve(question, k=settings.top_k)
+    # TOP_K passages are retrieved (and reported, so recall@5 can be measured), but only
+    # the best LLM_PASSAGES that clear the relevance floor go to the model: a small model
+    # on a CPU reads ~18 tokens/s, so every extra passage costs seconds.
     evidence = [p for p in passages if p.score >= settings.relevance_floor]
+    evidence = evidence[:settings.llm_passages]
 
     # Relevance floor: abstain honestly instead of letting the model guess.
     used_fallback = False

@@ -49,6 +49,7 @@ class Settings:
     redis_port: int = 6379
     llm_timeout_seconds: float = 120.0   # LLM_TIMEOUT_SECONDS
     llm_num_ctx: int = 4096              # LLM_NUM_CTX: context window asked of Ollama
+    llm_passages: int = 3                # LLM_PASSAGES: best N retrieved passages sent to the model
 
     log_level: str = "INFO"
 
@@ -74,5 +75,6 @@ def get_settings() -> Settings:
         redis_port=_int("REDIS_PORT", 6379),
         llm_timeout_seconds=_float("LLM_TIMEOUT_SECONDS", 120.0),
         llm_num_ctx=_int("LLM_NUM_CTX", 4096),
+        llm_passages=_int("LLM_PASSAGES", 3),
         log_level=os.environ.get("LOG_LEVEL", "INFO"),
     )

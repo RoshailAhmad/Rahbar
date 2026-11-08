@@ -88,9 +88,11 @@ def test_two_bad_replies_fall_back_instead_of_a_500() -> None:
 
 
 def test_a_citation_that_was_never_retrieved_is_removed() -> None:
-    provider = FakeProvider([_good(section="9.9 Invented clause")])
+    invented = Answer(reasoning="r", answer="At least 80 percent.",
+                      citations=[Citation(source="never-retrieved.pdf", section="9.9 Invented")],
+                      answered_from_context=True, confidence="high")
     r = pipeline.answer_question("What is the attendance rule?", FakeRetriever([_passage()]),
-                                 provider, get_settings())
+                                 FakeProvider([invented]), get_settings())
     # Nothing it cited was retrieved, so nothing supports it: it becomes an abstention.
     assert r.citations == [] and r.answered_from_context is False
 
@@ -167,3 +169,18 @@ def test_a_decline_carries_no_citations_and_low_confidence() -> None:
                                  FakeProvider([declined]), get_settings())
     assert r.answered_from_context is False
     assert r.citations == [] and r.confidence == "low"
+
+
+def test_slightly_reworded_citations_resolve_to_the_retrieved_passage() -> None:
+    passages = [_passage(section="1.21 Attendance"),
+                Passage(chunk_id="g1", text="B+ is 3.33", source="grading-page.html",
+                        section="Grading Policy", page=1, score=0.8)]
+    reworded = Answer(reasoning="r", answer="A B+ carries 3.33 grade points.",
+                      citations=[Citation(source="Grading-Page.html", section="grading policy:"),
+                                 Citation(source="handbook.pdf", section="1.21"),
+                                 Citation(source="made-up.pdf", section="1.21 Attendance")],
+                      answered_from_context=True, confidence="high")
+    kept, dropped = valid_citations(reworded, passages)
+    assert Citation(source="grading-page.html", section="Grading Policy", page=1) in kept
+    assert Citation(source="handbook.pdf", section="1.21 Attendance", page=4) in kept
+    assert dropped == 1                      # the document we never retrieved
