@@ -88,3 +88,13 @@ def test_store_records_the_embedding_pin_and_index_version() -> None:
     assert n == len(chunks)
     assert meta["embed_model"] == get_settings().embed_model
     assert meta["dimension"] == 3 and meta["index_version"]
+
+
+def test_numbered_sentences_are_not_mistaken_for_headings() -> None:
+    from pipeline.chunk import _heading
+
+    assert _heading("5.4 Academic Warning") == "5.4 Academic Warning"
+    assert _heading("1.21 Attendance") == "1.21 Attendance"
+    assert _heading("3 Fee Refund Policy for Withdrawal") is not None
+    assert _heading("14 Political activities or campaigns are strictly prohibited within") is None
+    assert _heading("2 Students must carry their ID cards") is None

@@ -62,3 +62,6 @@ class AskResponse(BaseModel):
     confidence: Literal["high", "medium", "low"]
     retrieved: list[RetrievedRef]
     provider: str
+    # Added (backward compatible): true when the answer came from the semantic cache.
+    # The UI shows a cache chip for it.
+    cached: bool = False

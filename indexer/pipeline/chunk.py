@@ -22,6 +22,24 @@ MD_HEADING = re.compile(r"^#{1,6}\s+(.+?)\s*#*\s*$")
 NUMBERED_HEADING = re.compile(r"^(\d{1,2}(?:\.\d{1,2}){0,3})\.?\s+([A-Z][^.!?]{2,80})$")
 CAPS_HEADING = re.compile(r"^[A-Z][A-Z0-9 &/,\-()]{4,70}$")
 SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9(])")
+SMALL_WORDS = {"a", "an", "and", "or", "of", "the", "in", "on", "for", "to", "at", "by",
+               "with", "from", "as", "per", "vs", "&", "-"}
+# A heading never ends on a word like these; a sentence cut at the line break does.
+DANGLING = {"a", "an", "and", "or", "of", "the", "in", "on", "for", "to", "at", "by",
+            "with", "from", "as", "within", "is", "are", "be", "that", "which", "will"}
+
+
+def _looks_like_title(text: str) -> bool:
+    """'Academic Warning' or 'Attendance' yes; 'Political activities are prohibited' no.
+    Numbered list items in the handbooks are sentences in sentence case."""
+    words = [w for w in re.findall(r"[A-Za-z][A-Za-z'\-]*", text)]
+    if not words or words[-1].lower() in DANGLING:
+        return False
+    if len(words) <= 3:
+        return True
+    content = [w for w in words if w.lower() not in SMALL_WORDS]
+    capitalised = sum(1 for w in content if w[0].isupper())
+    return capitalised / max(len(content), 1) >= 0.7
 
 
 def _heading(line: str) -> str | None:
@@ -32,7 +50,7 @@ def _heading(line: str) -> str | None:
     if m:
         return m.group(1).strip()
     m = NUMBERED_HEADING.match(line)
-    if m and len(m.group(2).split()) <= 10:
+    if m and len(m.group(2).split()) <= 10 and _looks_like_title(m.group(2)):
         return f"{m.group(1)} {m.group(2).strip()}"
     if CAPS_HEADING.match(line) and len(line.split()) <= 8:
         return line.title()
