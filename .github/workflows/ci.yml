@@ -50,21 +50,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: install kustomize and kubeconform
+      - name: install kubeconform
         run: |
-          curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.6.0/kustomize_v5.6.0_linux_amd64.tar.gz | tar xz
-          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          curl -fsSL --retry 5 --retry-delay 3 -o kubeconform.tgz \
+            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar xzf kubeconform.tgz kubeconform
+          ./kubeconform -v
       - name: kustomize build | kubeconform -strict
         run: |
+          kubectl version --client
           for overlay in prod dev ci ephemeral; do
             echo "== $overlay"
-            ./kustomize build k8s/overlays/$overlay | ./kubeconform -strict -summary
+            kubectl kustomize k8s/overlays/$overlay | ./kubeconform -strict -summary
           done
 
   build:
     needs: [lint, test]
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         component: [api, indexer, ui]
     steps:
@@ -77,22 +81,22 @@ jobs:
     needs: [lint, test]
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         component: [api, indexer, ui]
     steps:
       - uses: actions/checkout@v4
       - run: make stage-corpus
       - run: docker build -t rahbar-${{ matrix.component }}:scan ${{ matrix.component }}
+      - name: install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sudo sh -s -- -b /usr/local/bin v0.58.1
+          trivy --version
       - name: Trivy (fail on HIGH/CRITICAL with a fix available)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: rahbar-${{ matrix.component }}:scan
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          vuln-type: os,library
-          exit-code: "1"
-          format: table
+        run: |
+          trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            --pkg-types os,library --no-progress rahbar-${{ matrix.component }}:scan
 
   e2e-eval:
     needs: [test, manifests]
