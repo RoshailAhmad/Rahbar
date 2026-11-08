@@ -16,3 +16,17 @@
     with the 3B model and timeouts with an 8192-token context;
   - the golden set's section names, to match what our chunker actually produced.
 - We ran, read and can explain every file; the measurements in PIPELINE.md are ours.
+
+## Roshail (Part 1: Kubernetes, CI/CD, docs)
+- Tool: Claude (claude.ai).
+- Claude drafted: the three Dockerfiles, all Kubernetes manifests and overlays, the
+  Makefile targets, /readyz with the embedding-pin check, ci.yml and cd.yml, the e2e
+  cluster script, and first drafts of ADR 0001, ARCHITECTURE.md and the engineering notes
+  from our logs and measurements.
+- What we changed after running it: `enableServiceLinks: false` on Chroma (the
+  CHROMA_PORT collision), the Ollama address for Docker Desktop (host.docker.internal)
+  and the egress policy, resource limits from `kubectl top`, the model (qwen2.5:1.5b),
+  TOP_K/LLM_PASSAGES, the relevance floor (0.69) and the cache threshold (0.95, after 0.92
+  gave false hits), timeouts sized from measured answer times, and two CI fixes (Trivy
+  installation, kubeconform download).
+- We ran every command ourselves and checked every number in the docs against our files.
