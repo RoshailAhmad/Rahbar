@@ -1,0 +1,69 @@
+[
+  {
+    "file": "b01-grading-page-copy.html",
+    "name": "Grading page",
+    "doc_version": "2026",
+    "superseded": false,
+    "planted": "exact duplicate of corpus grading-page.html"
+  },
+  {
+    "file": "b02-grading-page-mirror.html",
+    "name": "Grading page",
+    "doc_version": "2026",
+    "superseded": false,
+    "planted": "exact duplicate of corpus grading-page.html and of b01"
+  },
+  {
+    "file": "b03-exam-hall-rules-reposted.md",
+    "name": "Exam Hall Rules",
+    "doc_version": "2026-09",
+    "superseded": false,
+    "planted": "near-duplicate of b08 (a few words changed)"
+  },
+  {
+    "file": "b04-academic-rules-truncated.pdf",
+    "name": "Academic Rules Handbook (Jun 2026)",
+    "doc_version": "2026-06",
+    "superseded": false,
+    "planted": "truncated PDF (first 60% of the bytes)"
+  },
+  {
+    "file": "b05-untitled-notes.md",
+    "planted": "missing metadata: no name/title, no doc_version, no date"
+  },
+  {
+    "file": "b06-fee-structure-2027-28.html",
+    "name": "Fee Structure page",
+    "doc_version": "2027-28",
+    "superseded": false,
+    "planted": "newer version of corpus fee-structure-page.html (2026-27)"
+  },
+  {
+    "file": "b07-library-borrowing-rules.md",
+    "name": "Library Borrowing Rules",
+    "doc_version": "2026-09",
+    "superseded": false,
+    "planted": "contains an injected instruction (section 2)"
+  },
+  {
+    "file": "b08-exam-hall-rules.md",
+    "name": "Examination Hall Rules",
+    "doc_version": "2026-09",
+    "superseded": false,
+    "planted": "clean"
+  },
+  {
+    "file": "b09-student-societies-guide.md",
+    "name": "Student Societies Guide",
+    "doc_version": "2026-08",
+    "superseded": false,
+    "planted": "clean"
+  },
+  {
+    "file": "b10-campus-it-services.md",
+    "name": "Campus IT Services and Wi-Fi Policy",
+    "doc_version": "2026-07",
+    "superseded": false,
+    "planted": "clean"
+  }
+]
