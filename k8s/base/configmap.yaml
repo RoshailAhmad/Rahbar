@@ -21,6 +21,7 @@ data:
   CHROMA_HOST: "chroma"
   CHROMA_PORT: "8000"
   CHROMA_COLLECTION: "rahbar"
+  DATA_DIR: "/data"
 
   # Semantic cache (the Redis Service)
   REDIS_HOST: "redis"

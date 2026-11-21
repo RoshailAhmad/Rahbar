@@ -98,3 +98,9 @@ eval-fixtures: ## score the CI fixture golden set against a local `make dev`
 
 check: ## run the submission checker
 	$(PY) scripts/check_submission.py
+
+eval-suite: ## three-level suite (Part B): make eval-suite LABEL=baseline
+	$(BIN)/python eval/suite.py --api "http://$(INGRESS_IP)" --host $(HOST) --label $(or $(LABEL),run)
+
+gate: ## release gate (Part C2): make gate BASE=eval/results/a.json CAND=eval/results/b.json
+	$(BIN)/python eval/gate.py --baseline $(BASE) --candidate $(CAND)

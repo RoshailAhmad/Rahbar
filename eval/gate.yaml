@@ -1,0 +1,10 @@
+# Release gate (Assignment 03, Part C2).
+# eval/gate.py compares a candidate result file with a baseline result file using these rules.
+# On the cluster this file comes from ConfigMap `gate-config`, so a threshold can change
+# without rebuilding any image.
+max_recall5_drop: 0.02          # candidate recall@5 may be at most 2 points below the baseline
+min_faithfulness: 0.80          # PLACEHOLDER: justify in Phase 3 from the hand-labelled answers
+max_p95_seconds: 60             # PLACEHOLDER: set from the measured baseline p95 plus a margin
+min_citation_validity: 0.95     # same rule as the A2 CI gate
+abstention: not_below_baseline  # candidate abstention correctness >= baseline
+on_missing_metric: skip         # skip | fail. faithfulness stays empty until Phase 2
