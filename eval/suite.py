@@ -28,6 +28,7 @@ import yaml
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+from judge import judge_rows  # noqa: E402
 from run_eval import ask, citation_validity, recall_at_k  # noqa: E402
 
 
@@ -99,7 +100,7 @@ def end_to_end(client: httpx.Client, api: str, questions: list[dict]) -> tuple[d
             "must_abstain": q["must_abstain"], "answered_from_context": answered,
             "answer": response.get("answer"), "citations": citations,
             "citation_validity": validity, "retrieved": retrieved,
-            "recall@5": recall_at_k(q["relevant"], retrieved, 5),
+            "relevant": q["relevant"], "recall@5": recall_at_k(q["relevant"], retrieved, 5),
             "cached": bool(response.get("cached")), "request_id": response.get("request_id"),
             "seconds": elapsed, "error": error,
         })
@@ -116,7 +117,6 @@ def end_to_end(client: httpx.Client, api: str, questions: list[dict]) -> tuple[d
         "latency_p50_s": percentile(seconds, 50),
         "latency_p95_s": percentile(seconds, 95),
         "errors": sum(1 for r in rows if r["error"]),
-        "faithfulness": None,  # Phase 2: LLM judge + hand labels
     }
     return metrics, rows
 
@@ -167,6 +167,8 @@ def main() -> int:
     parser.add_argument("--label", default="run")
     parser.add_argument("--out-dir", type=Path, default=Path(os.environ.get("RESULTS_DIR", HERE / "results")))
     parser.add_argument("--seed", type=int, default=int(os.environ.get("EVAL_SEED", "42")))
+    parser.add_argument("--ollama", help="Ollama URL for the judge (default: $OLLAMA_URL)")
+    parser.add_argument("--no-judge", action="store_true", help="skip the faithfulness judge")
     args = parser.parse_args()
     if not args.golden.exists() and args.golden.name == "golden.jsonl":
         args.golden = HERE / "golden.yaml"  # until Mehak's golden.jsonl lands
@@ -178,9 +180,15 @@ def main() -> int:
     with httpx.Client(timeout=360.0, headers=headers) as client:
         config = config_snapshot(client, api, args)
         print(f"suite '{args.label}': {len(questions)} questions against {api}")
-        module = run_level("module", seed=args.seed)
-        component = run_level("component", questions=questions, client=client, api=api)
+        module = run_level("module", seed=args.seed, ollama=args.ollama)
         e2e, rows = end_to_end(client, api, questions)
+    # component level: scored from the chunks the api returned for each question
+    component = run_level("component", questions=questions, rows=rows)
+    if args.no_judge:
+        e2e["faithfulness"] = None
+    else:
+        print("judging faithfulness ...")
+        e2e.update(judge_rows(rows, seed=args.seed, ollama=args.ollama))
 
     result = {"config": config, "module": module, "component": component,
               "end_to_end": e2e, "per_question": rows}
