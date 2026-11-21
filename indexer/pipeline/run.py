@@ -63,6 +63,27 @@ def discover(corpus_dir: str) -> list[tuple[Path, str, bool]]:
     return found
 
 
+def ingest_and_list(data_dir: Path, settings: IndexerSettings) -> list[tuple[Path, str, bool]]:
+    """Part A1: verify everything in DATA_DIR/incoming, then list the lake for indexing."""
+    from .embed import embed
+    from .extract import extract
+    from .ingest import lake_documents, run_ingest
+
+    def extract_text(path: Path) -> tuple[str, int]:
+        doc = extract(str(path), "unknown", False)
+        return "\n".join(p.text for p in doc.pages), len(doc.pages)
+
+    def embed_openings(texts: list[str]) -> list[list[float]]:
+        return embed(texts, settings)
+
+    results, counts = run_ingest(data_dir, extract_text, embed_openings)
+    for r in results:
+        log("verified", file=r.file, decision=r.decision,
+            **{name: ("pass" if c["pass"] else "FAIL: " + c["reason"]) for name, c in r.checks.items()})
+    log("verification finished", documents=len(results), **counts)
+    return lake_documents(data_dir)
+
+
 def run_pipeline(settings: IndexerSettings) -> int:
     from .chunk import chunk
     from .clean import clean
@@ -70,9 +91,13 @@ def run_pipeline(settings: IndexerSettings) -> int:
     from .extract import extract
     from .store import store
 
-    documents = discover(settings.corpus_dir)
+    data_dir = os.environ.get("DATA_DIR")
+    if data_dir:  # A3: verify incoming files into the data lake, then index the lake
+        documents = ingest_and_list(Path(data_dir), settings)
+    else:         # A2 / CI fixtures: index CORPUS_DIR as before
+        documents = discover(settings.corpus_dir)
     if not documents:
-        raise SystemExit(f"no documents found in {settings.corpus_dir}")
+        raise SystemExit(f"no documents to index (DATA_DIR={data_dir}, CORPUS_DIR={settings.corpus_dir})")
     all_chunks: list[Chunk] = []
     for path, doc_version, superseded in documents:
         doc = clean(extract(str(path), doc_version, superseded))
