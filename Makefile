@@ -104,3 +104,7 @@ eval-suite: ## three-level suite (Part B): make eval-suite LABEL=baseline
 
 gate: ## release gate (Part C2): make gate BASE=eval/results/a.json CAND=eval/results/b.json
 	$(BIN)/python eval/gate.py --baseline $(BASE) --candidate $(CAND)
+
+eval-image: ## build the eval Job image and load it into minikube
+	docker build -t rahbar-eval:dev eval
+	minikube image load --overwrite=true rahbar-eval:dev
