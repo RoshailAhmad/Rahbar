@@ -31,7 +31,8 @@ class OllamaProvider:
                 # 4096 fits instructions + TOP_K=3 chunks; a bigger window costs RAM and,
                 # on a small laptop, swapping. Raise LLM_NUM_CTX if TOP_K goes up.
                 "options": {"temperature": self.settings.temperature,
-                            "num_ctx": self.settings.llm_num_ctx},
+                            "num_ctx": self.settings.llm_num_ctx,
+                            "seed": self.settings.llm_seed},
             },
         )
         response.raise_for_status()

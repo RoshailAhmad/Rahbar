@@ -52,6 +52,8 @@ class RetrievedRef(BaseModel):
     section: str
     page: int | None = None
     score: float
+    # Added (A3): the chunk text, so the faithfulness judge can see the context.
+    text: str | None = None
 
 
 class AskResponse(BaseModel):
