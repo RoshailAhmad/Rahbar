@@ -68,7 +68,7 @@ def _response(answer: Answer, passages: list[Passage], provider: LLMProvider,
         answered_from_context=answer.answered_from_context,
         confidence=answer.confidence,
         retrieved=[RetrievedRef(chunk_id=p.chunk_id, source=p.source, section=p.section,
-                                page=p.page, score=p.score) for p in passages],
+                                page=p.page, score=p.score, text=p.text) for p in passages],
         provider=provider.name,
         cached=cached,
     )

@@ -1,0 +1,73 @@
+# The Part B suite as a Kubernetes Job (Assignment 03, Part F2):
+#   kubectl delete job eval -n rahbar --ignore-not-found   # Jobs are immutable; remove the last run
+#   kubectl apply -f k8s/eval-job.yaml
+#   kubectl wait --for=condition=complete job/eval -n rahbar --timeout=1800s   # or condition=failed
+#   kubectl logs job/eval -n rahbar
+# It writes its result file to the data-lake PVC (/data/results) and exits non-zero when the
+# release gate fails, so the Job ends Failed. Point it at the candidate by changing EVAL_API.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: eval
+  namespace: rahbar
+  labels:
+    app: eval
+spec:
+  backoffLimit: 0                  # a failed gate is an answer, not a crash: never retry it
+  activeDeadlineSeconds: 3600
+  ttlSecondsAfterFinished: 86400   # keep the logs for a day (screenshots)
+  template:
+    metadata:
+      labels:
+        app: eval
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: eval
+          image: rahbar-eval:dev
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: rahbar-config        # OLLAMA_URL and LLM_MODEL for the judge, EMBED_MODEL
+          env:
+            - name: EVAL_API
+              value: "http://api:8000"     # candidate: http://api-candidate:8000
+            - name: EVAL_LABEL
+              value: "job"
+            - name: RESULTS_DIR
+              value: /data/results
+            - name: GATE_CONFIG
+              value: /config/gate.yaml
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: gate-config
+              mountPath: /config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: data-lake
+        - name: gate-config
+          configMap:
+            name: gate-config
+        - name: tmp
+          emptyDir: {}

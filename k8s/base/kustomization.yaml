@@ -22,3 +22,5 @@ resources:
   - indexer-job.yaml
   - reindex-cronjob.yaml
   - data-lake-pvc.yaml
+  - gate-config.yaml
+  - networkpolicy-eval.yaml
