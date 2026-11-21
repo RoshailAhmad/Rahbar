@@ -25,7 +25,9 @@ from ..retrieval.base import Retriever
 from ..routes import metrics
 from ..schemas import Answer, AskResponse, Passage, RetrievedRef
 from .cache import SemanticCache
+from ..providers.llm.prompt import build_messages
 from .guards import abstention, declines_in_text, fallback, is_followup, valid_citations
+from .trace import Trace, injection_pattern
 
 log = logging.getLogger("rahbar.answer")
 _cache: SemanticCache | None = None
@@ -74,57 +76,132 @@ def _response(answer: Answer, passages: list[Passage], provider: LLMProvider,
     )
 
 
+def _chunk_ref(p: Passage) -> dict:
+    return {"chunk_id": p.chunk_id, "doc_id": p.doc_id or p.source.rsplit(".", 1)[0],
+            "source": p.source, "section": p.section, "page": p.page,
+            "doc_version": p.doc_version, "score": round(p.score, 4)}
+
+
 def answer_question(
     question: str, retriever: Retriever, provider: LLMProvider, settings: Settings
 ) -> AskResponse:
+    """The query pipeline. Writes one trace record per call (Part D1), whatever the outcome."""
+    tr = Trace(request_id_var.get(), question)
+    tr.set(embedding={"model": settings.embed_model, "dimension": None},
+           collection={"name": settings.collection, "index_version": None},
+           model={"provider": provider.name, "name": settings.llm_model,
+                  "temperature": settings.temperature, "seed": settings.llm_seed,
+                  "num_ctx": settings.llm_num_ctx})
+    try:
+        response = _answer(question, retriever, provider, settings, tr)
+    except Exception as exc:  # never lose the trace, never a 500 from here
+        log.exception("pipeline crashed", extra={"error": f"{type(exc).__name__}: {exc}"})
+        metrics.FALLBACKS.inc()
+        tr.guardrail("output", "fallback", reason=f"{type(exc).__name__}")
+        response = _response(fallback(), [], provider)
+    tr.set(response={"answer": response.answer, "answered_from_context": response.answered_from_context,
+                     "confidence": response.confidence, "cached": response.cached,
+                     "citations": [c.model_dump() for c in response.citations],
+                     "fallback": any(g["action"] == "fallback" for g in tr.record["guardrails"])})
+    for stage, ms in tr.record["latency_ms"].items():
+        metrics.STAGE.labels(stage=stage).observe(ms / 1000)
+    tr.finish()
+    return response
+
+
+def _answer(question: str, retriever: Retriever, provider: LLMProvider, settings: Settings,
+            tr: Trace) -> AskResponse:
     followup = is_followup(question)
     cache = get_cache(settings)
     embed: Any = getattr(retriever, "embed_query", None)   # only the real retriever has one
     vector: tuple[float, ...] | None = None
     index_version = ""
 
+    # Input rail (D4): flag instructions hidden in the question. The question is still
+    # answered: the prompt treats it as data and the output is schema-constrained.
+    pattern = injection_pattern(question)
+    if pattern:
+        metrics.INJECTIONS.labels(rail="input").inc()
+        tr.guardrail("input", "flagged", pattern=pattern)
+
     # 2. Semantic cache (never for follow-ups).
     if embed is not None and not followup:
         try:
-            vector = embed(question)
+            with tr.stage("embed"):
+                vector = embed(question)
             index_version = retriever.index_version()  # type: ignore[attr-defined]
+            tr.record["embedding"]["dimension"] = len(vector) if vector else None
+            tr.record["collection"]["index_version"] = index_version
         except Exception as exc:
             log.warning("cache key unavailable", extra={"error": str(exc)})
         if vector is not None:
-            hit = cache.lookup(index_version, vector)
+            with tr.stage("cache"):
+                hit = cache.lookup(index_version, vector)
             if hit is not None:
                 metrics.CACHE_HITS.inc()
+                tr.set(cache={"hit": True, "similarity": round(hit[1], 4)})
                 response = AskResponse(**{**hit[0], "request_id": request_id_var.get(),
                                           "cached": True})
                 log.info("answered", extra={"cached": True, "similarity": round(hit[1], 4),
                                             "index_version": index_version})
                 return response
             metrics.CACHE_MISSES.inc()
+    tr.set(cache={"hit": False, "skipped": followup or vector is None})
 
     # 3-4. Retrieve.
     try:
-        with metrics.RETRIEVAL.time():
+        with metrics.RETRIEVAL.time(), tr.stage("retrieve"):
             passages = retriever.retrieve(question, k=settings.top_k)
     except Exception as exc:  # Chroma or the embedding call failed: answer safely
         log.exception("retrieval failed", extra={"error": f"{type(exc).__name__}: {exc}"})
         metrics.FALLBACKS.inc()
+        tr.guardrail("output", "fallback", reason="retrieval failed")
         return _response(fallback(), [], provider)
+    if passages:
+        metrics.TOP1_SIMILARITY.observe(passages[0].score)
+
+    # Retrieval rail (D4): a retrieved chunk that tries to instruct the model is kept out
+    # of the prompt, and the action is written into the trace.
+    clean: list[Passage] = []
+    for p in passages:
+        hit_pattern = injection_pattern(p.text)
+        if hit_pattern:
+            metrics.INJECTIONS.labels(rail="retrieval").inc()
+            tr.guardrail("retrieval", "excluded_from_prompt", chunk_id=p.chunk_id,
+                         doc_id=p.doc_id or p.source, pattern=hit_pattern)
+        else:
+            clean.append(p)
     # TOP_K passages are retrieved (and reported, so recall@5 can be measured), but only
     # the best LLM_PASSAGES that clear the relevance floor go to the model: a small model
     # on a CPU reads ~18 tokens/s, so every extra passage costs seconds.
-    evidence = [p for p in passages if p.score >= settings.relevance_floor]
+    evidence = [p for p in clean if p.score >= settings.relevance_floor]
     evidence = evidence[:settings.llm_passages]
+    tr.set(retrieval={"top_k": settings.top_k, "filter": getattr(retriever, "last_filter", None),
+                      "relevance_floor": settings.relevance_floor, "reranker": None,
+                      "chunks": [_chunk_ref(p) for p in passages],
+                      "reranked_order": [p.chunk_id for p in passages],  # no reranker: retrieval order
+                      "evidence_ids": [p.chunk_id for p in evidence]})
 
     # Relevance floor: abstain honestly instead of letting the model guess.
     used_fallback = False
     if not evidence:
+        tr.guardrail("retrieval", "abstain_below_relevance_floor",
+                     top_score=round(passages[0].score, 4) if passages else None)
         answer = abstention()
     else:
-        answer, used_fallback = _generate_with_retry(provider, question, evidence)
+        tr.prompt(build_messages(question, evidence))
+        with tr.stage("generate"):
+            answer, used_fallback = _generate_with_retry(provider, question, evidence)
+        usage = getattr(provider, "last_usage", None)
+        if usage:
+            tr.set(tokens={"in": usage[0], "out": usage[1]})
+        if used_fallback:
+            tr.guardrail("output", "fallback", reason="validation failed twice")
         kept, dropped = valid_citations(answer, evidence)
         if dropped:
             log.warning("dropped citations that match no retrieved passage",
                         extra={"dropped": dropped})
+            tr.guardrail("output", "dropped_citations", count=dropped)
         answer = answer.model_copy(update={"citations": kept})
         # Grounding guards: an answer that admits the evidence does not cover the
         # question, or that cites nothing we retrieved, is not an answer from context.
@@ -132,6 +209,8 @@ def answer_question(
             log.warning("ungrounded answer converted to an abstention",
                         extra={"self_declined": declines_in_text(answer.answer),
                                "valid_citations": len(kept)})
+            tr.guardrail("output", "converted_to_abstention",
+                         self_declined=declines_in_text(answer.answer), valid_citations=len(kept))
             answer = abstention()
         if not answer.answered_from_context:
             # A decline cites nothing and is never "high confidence".
