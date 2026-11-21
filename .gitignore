@@ -33,3 +33,4 @@ chroma-data/
 
 .chroma-venv/
 chroma-data/
+*.save
