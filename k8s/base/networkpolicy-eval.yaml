@@ -1,0 +1,46 @@
+# The eval Job talks to the api Services only (plus DNS, allowed for all pods, and Ollama
+# for the judge: see the overlay's egress-to-ollama-host). Policies add up, so these sit
+# beside the existing ones without changing them.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-from-eval
+  namespace: rahbar
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: ["api", "api-candidate"]
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: eval
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: eval-egress-to-api
+  namespace: rahbar
+spec:
+  podSelector:
+    matchLabels:
+      app: eval
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values: ["api", "api-candidate"]
+      ports:
+        - protocol: TCP
+          port: 8000

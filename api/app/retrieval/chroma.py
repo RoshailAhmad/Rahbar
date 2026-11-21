@@ -62,6 +62,7 @@ class ChromaRetriever:
         vector = list(self.embed_query(question))
         # Exclude superseded documents unless the user explicitly asks about an older one.
         where = None if wants_older_version(question) else {"superseded": False}
+        self.last_filter = where  # recorded in the trace (A3 D1)
         result = self._collection().query(
             query_embeddings=[vector], n_results=k, where=where,
             include=["documents", "metadatas", "distances"],
@@ -76,5 +77,7 @@ class ChromaRetriever:
                 section=str(meta.get("section", "")),
                 page=int(meta["page"]) if meta.get("page") is not None else None,
                 score=1.0 - float(distance),   # Chroma returns cosine distance
+                doc_id=str(meta.get("doc_id") or str(meta.get("source", "")).rsplit(".", 1)[0]),
+                doc_version=str(meta["doc_version"]) if meta.get("doc_version") is not None else None,
             ))
         return passages

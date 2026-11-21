@@ -21,6 +21,7 @@ data:
   CHROMA_HOST: "chroma"
   CHROMA_PORT: "8000"
   CHROMA_COLLECTION: "rahbar"
+  DATA_DIR: "/data"
 
   # Semantic cache (the Redis Service)
   REDIS_HOST: "redis"
@@ -42,6 +43,8 @@ data:
   # Generation. 0.1: facts and JSON want near-deterministic decoding; 0 still cannot
   # fix missing knowledge, which is what the relevance floor is for.
   TEMPERATURE: "0.1"
+  # Fixed sampling seed: same question + same context -> same answer (A3 Part B).
+  LLM_SEED: "42"
 
   LLM_TIMEOUT_SECONDS: "300"
   LLM_NUM_CTX: "4096"

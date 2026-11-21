@@ -12,7 +12,7 @@ spec:
     matchExpressions:
       - key: app
         operator: In
-        values: ["api", "indexer"]
+        values: ["api", "indexer", "eval"]
   policyTypes:
     - Egress
   egress:

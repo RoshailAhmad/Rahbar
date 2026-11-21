@@ -33,3 +33,7 @@ chroma-data/
 
 .chroma-venv/
 chroma-data/
+*.save
+
+corpus/batch_b/*.pdf
+corpus/batch_b/*.html

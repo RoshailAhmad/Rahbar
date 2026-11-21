@@ -21,6 +21,9 @@ patches:
         path: /data/LLM_PROVIDER
         value: stub
       - op: replace
+        path: /data/DATA_DIR
+        value: ""
+      - op: replace
         path: /data/OLLAMA_URL
         value: http://OLLAMA_HOST_IP:11434
 images:

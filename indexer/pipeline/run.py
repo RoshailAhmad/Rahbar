@@ -63,6 +63,49 @@ def discover(corpus_dir: str) -> list[tuple[Path, str, bool]]:
     return found
 
 
+def ingest_and_sync(data_dir: Path, settings: IndexerSettings) -> int:
+    """Parts A1 + A2: apply requests, verify DATA_DIR/incoming, then sync the index with the lake."""
+    from .chunk import chunk
+    from .clean import clean
+    from .embed import embed
+    from .extract import extract
+    from .ingest import apply_requests, lake_entries, run_ingest
+    from .store import get_client
+    from .update import LakeDoc, counts_by_doc, open_collection, sync
+
+    for done in apply_requests(data_dir):
+        log("request", **done)
+
+    def extract_text(path: Path) -> tuple[str, int]:
+        doc = extract(str(path), "unknown", False)
+        return "\n".join(p.text for p in doc.pages), len(doc.pages)
+
+    def embed_openings(texts: list[str]) -> list[list[float]]:
+        return embed(texts, settings)
+
+    results, counts = run_ingest(data_dir, extract_text, embed_openings)
+    for r in results:
+        log("verified", file=r.file, decision=r.decision,
+            **{name: ("pass" if c["pass"] else "FAIL: " + c["reason"]) for name, c in r.checks.items()})
+    log("verification finished", documents=len(results), **counts)
+
+    docs = [LakeDoc(doc_id=e["doc_id"], path=str(data_dir / e["folder"] / e["file"]), sha256=e["sha256"],
+                    doc_version=str(e.get("doc_version", "unknown")), superseded=bool(e.get("superseded")))
+            for e in lake_entries(data_dir)]
+
+    def make_chunks(doc: LakeDoc) -> list[Chunk]:
+        pieces = chunk(clean(extract(doc.path, doc.doc_version, doc.superseded)),
+                       settings.chunk_size, settings.chunk_overlap)
+        log("chunked", source=Path(doc.path).name, chunks=len(pieces))
+        return pieces
+
+    collection = open_collection(get_client(settings), settings.collection, settings.embed_model)
+    stats = sync(collection, docs, make_chunks, lambda texts: embed(texts, settings), settings.embed_model)
+    log("index sync finished", **stats)
+    log("chunks per doc_id", **counts_by_doc(collection))
+    return int(stats["total_chunks"])
+
+
 def run_pipeline(settings: IndexerSettings) -> int:
     from .chunk import chunk
     from .clean import clean
@@ -70,9 +113,12 @@ def run_pipeline(settings: IndexerSettings) -> int:
     from .extract import extract
     from .store import store
 
-    documents = discover(settings.corpus_dir)
+    data_dir = os.environ.get("DATA_DIR")
+    if data_dir:  # A3: verify incoming files into the data lake, then sync the index incrementally
+        return ingest_and_sync(Path(data_dir), settings)
+    documents = discover(settings.corpus_dir)  # A2 / CI fixtures: full rebuild of CORPUS_DIR
     if not documents:
-        raise SystemExit(f"no documents found in {settings.corpus_dir}")
+        raise SystemExit(f"no documents to index (DATA_DIR={data_dir}, CORPUS_DIR={settings.corpus_dir})")
     all_chunks: list[Chunk] = []
     for path, doc_version, superseded in documents:
         doc = clean(extract(str(path), doc_version, superseded))

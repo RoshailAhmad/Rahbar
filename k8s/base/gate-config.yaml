@@ -1,0 +1,16 @@
+# Release-gate thresholds (Assignment 03, Part C2 / F2), mounted into the eval Job at
+# /config/gate.yaml. Edit this ConfigMap and re-run the Job: the gate decision changes
+# without rebuilding any image. Keep in sync with eval/gate.yaml (used for local runs).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gate-config
+  namespace: rahbar
+data:
+  gate.yaml: |
+    max_recall5_drop: 0.02          # candidate recall@5 may be at most 2 points below the baseline
+    min_faithfulness: 0.80          # PLACEHOLDER: justify in Phase 3 from the hand labels
+    max_p95_seconds: 60             # PLACEHOLDER: set from the measured baseline p95 plus a margin
+    min_citation_validity: 0.95
+    abstention: not_below_baseline
+    on_missing_metric: skip
