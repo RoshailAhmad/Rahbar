@@ -21,3 +21,4 @@ resources:
   - pdb.yaml
   - indexer-job.yaml
   - reindex-cronjob.yaml
+  - data-lake-pvc.yaml

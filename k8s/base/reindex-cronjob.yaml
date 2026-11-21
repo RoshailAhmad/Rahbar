@@ -11,6 +11,7 @@ spec:
   # Mondays 02:00 (cluster time, UTC by default)
   schedule: "0 2 * * 1"
   concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2
   jobTemplate:
@@ -29,6 +30,7 @@ spec:
             runAsNonRoot: true
             runAsUser: 10001
             runAsGroup: 10001
+            fsGroup: 10001
             seccompProfile:
               type: RuntimeDefault
           containers:
@@ -54,6 +56,11 @@ spec:
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp
+                - name: data
+                  mountPath: /data
           volumes:
             - name: tmp
               emptyDir: {}
+            - name: data
+              persistentVolumeClaim:
+                claimName: data-lake
