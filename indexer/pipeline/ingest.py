@@ -5,6 +5,15 @@
     DATA_DIR/quarantine/  failed documents (never indexed)
     DATA_DIR/archive/     superseded versions (still indexed with superseded=true; restorable)
     DATA_DIR/reports/     verification-<run_id>.json and .md, one pair per run
+    DATA_DIR/deleted/     documents removed on request (kept for the audit trail, never indexed)
+
+Requests (Part A2): put DATA_DIR/incoming/_requests.json before running the ingestion Job:
+    [{"action": "delete",  "doc_id": "b09-student-societies-guide"},
+     {"action": "archive", "doc_id": "fee-structure-page"},
+     {"action": "restore", "doc_id": "fee-structure-page"}]
+delete removes the document from the lake (its chunks are then deleted from the index);
+archive marks it superseded; restore brings an archived version back as the current one
+and archives the other current version of the same family (the rollback demo).
 """
 
 from __future__ import annotations
@@ -98,8 +107,57 @@ def apply_decisions(data_dir: Path, candidates: list[Candidate], results: list[R
     return counts
 
 
+def apply_requests(data_dir: Path) -> list[dict]:
+    """Apply incoming/_requests.json (delete / archive / restore). Returns what was done."""
+    path = data_dir / "incoming" / "_requests.json"
+    if not path.exists():
+        return []
+    requests = json.loads(path.read_text(encoding="utf-8"))
+    registry = {e["doc_id"]: e for e in load_registry(data_dir)}
+    done = []
+    for req in requests:
+        action, doc_id = req.get("action"), req.get("doc_id")
+        entry = registry.get(doc_id)
+        if not entry:
+            done.append({"action": action, "doc_id": doc_id, "result": "unknown doc_id"})
+            continue
+        src = data_dir / entry["folder"] / entry["file"]
+        if action == "delete":
+            (data_dir / "deleted").mkdir(parents=True, exist_ok=True)
+            if src.exists():
+                shutil.move(str(src), str(data_dir / "deleted" / entry["file"]))
+            del registry[doc_id]
+        elif action == "archive":
+            if entry["folder"] != "archive" and src.exists():
+                shutil.move(str(src), str(data_dir / "archive" / entry["file"]))
+            entry.update(folder="archive", superseded=True)
+        elif action == "restore":
+            for other in registry.values():  # the version that is current now gets archived
+                if other["doc_id"] != doc_id and other.get("family") == entry.get("family") \
+                        and not other.get("superseded"):
+                    other_src = data_dir / other["folder"] / other["file"]
+                    if other_src.exists() and other["folder"] != "archive":
+                        shutil.move(str(other_src), str(data_dir / "archive" / other["file"]))
+                    other.update(folder="archive", superseded=True)
+            if entry["folder"] != "lake" and src.exists():
+                shutil.move(str(src), str(data_dir / "lake" / entry["file"]))
+            entry.update(folder="lake", superseded=False)
+        else:
+            done.append({"action": action, "doc_id": doc_id, "result": "unknown action"})
+            continue
+        done.append({"action": action, "doc_id": doc_id, "result": "done"})
+    save_registry(data_dir, list(registry.values()))
+    path.unlink()
+    return done
+
+
+def lake_entries(data_dir: Path) -> list[dict]:
+    """Registry entries for every document to index (lake + archive)."""
+    return load_registry(data_dir)
+
+
 def run_ingest(data_dir: Path, extract_text, embed: Embedder | None) -> tuple[list[Result], dict[str, int]]:
-    for name in ("incoming", "lake", "quarantine", "archive", "reports"):
+    for name in ("incoming", "lake", "quarantine", "archive", "reports", "deleted"):
         (data_dir / name).mkdir(parents=True, exist_ok=True)
     candidates = incoming_candidates(data_dir, extract_text)
     known = [Known(doc_id=e["doc_id"], sha256=e["sha256"], family=e.get("family"),
