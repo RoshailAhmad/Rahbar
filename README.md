@@ -95,3 +95,28 @@ sets `OLLAMA_URL` and the egress NetworkPolicy to that address.
 ## Team and AI use
 Roshail: Kubernetes, CI/CD, architecture docs. Mehak: corpus, indexer, API pipeline,
 evaluation, pipeline docs. AI assistance is disclosed in [docs/AI-USAGE.md](docs/AI-USAGE.md).
+
+## Assignment 03: RAGOps on Kubernetes
+
+The full steps are in [k8s/README.md](k8s/README.md), the write-up is in the report, and
+AI use is disclosed in [AI-USAGE.md](AI-USAGE.md). Each part runs with one command:
+
+| Part | What | One command |
+| --- | --- | --- |
+| A | Verify new documents, update the data lake, sync the index incrementally | `kubectl create job -n rahbar --from=cronjob/reindex ingest-1` |
+| B | Three-level evaluation (module, component, end to end) as a Job | `sed 's/value: "job"/value: "baseline"/' k8s/eval-job.yaml \| kubectl apply -f -` |
+| B | Same suite on typo'd questions (noise test) | add `EVAL_GOLDEN=/eval/golden_typos.jsonl` to the eval Job |
+| C | Release gate: candidate vs baseline, thresholds in ConfigMap `gate-config` | `make gate BASE=eval/results/baseline.json CAND=eval/results/<run>.json` |
+| C | Candidate index and api (chunk size 250) | `kubectl apply -f k8s/candidate/` |
+| D | Open one trace / summarise a time window | `kubectl exec -n rahbar deploy/api -- python -m app.trace_tool <id>` / `... app.trace_summary --since 1h` |
+| E | Coverage of live queries by the golden set | `.venv/bin/python eval/query_coverage.py` |
+| E | Compare two eval runs (drift, stochasticity) | `.venv/bin/python eval/compare.py eval/results/baseline.json eval/results/<run>.json` |
+| F | Everything running in the namespace | `kubectl get all,pvc,configmap,cronjob,job -n rahbar` |
+
+**Measured (A3 baseline, 39 golden questions, seed 42):**
+- recall@5 0.84, MRR 0.73
+- citation validity 1.00, abstention correctness 1.00
+- faithfulness 0.75 (by an LLM judge that agreed with our hand labels on 3 of 8 answers)
+- p95 latency 37.7 s on a laptop CPU
+
+An unchanged-lake re-ingestion embeds 0 chunks in 9 s.
