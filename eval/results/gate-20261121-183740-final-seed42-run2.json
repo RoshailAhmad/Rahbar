@@ -1,0 +1,50 @@
+{
+  "passed": false,
+  "config": {
+    "max_recall5_drop": 0.02,
+    "min_faithfulness": 0.8,
+    "max_p95_seconds": 60,
+    "min_citation_validity": 0.95,
+    "abstention": "not_below_baseline",
+    "on_missing_metric": "skip"
+  },
+  "rules": [
+    {
+      "metric": "recall@5",
+      "rule": ">= baseline - 0.02",
+      "baseline": 0.5735,
+      "candidate": 0.8382,
+      "status": "PASS"
+    },
+    {
+      "metric": "faithfulness",
+      "rule": ">= 0.8",
+      "baseline": 0.7143,
+      "candidate": 0.75,
+      "status": "FAIL"
+    },
+    {
+      "metric": "latency p95 (s)",
+      "rule": "<= 60.0",
+      "baseline": 59.607,
+      "candidate": 37.65,
+      "status": "PASS"
+    },
+    {
+      "metric": "citation_validity",
+      "rule": ">= 0.95",
+      "baseline": 1.0,
+      "candidate": 1.0,
+      "status": "PASS"
+    },
+    {
+      "metric": "abstention_correctness",
+      "rule": ">= baseline",
+      "baseline": 1.0,
+      "candidate": 1.0,
+      "status": "PASS"
+    }
+  ],
+  "baseline": "/data/results/baseline.json",
+  "candidate": "/data/results/20261121-183740-final-seed42-run2.json"
+}
