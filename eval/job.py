@@ -30,6 +30,8 @@ def main() -> int:
     results.mkdir(parents=True, exist_ok=True)
 
     cmd = [sys.executable, str(HERE / "suite.py"), "--api", api, "--label", label, "--out-dir", str(results)]
+    if os.environ.get("EVAL_GOLDEN"):
+        cmd += ["--golden", os.environ["EVAL_GOLDEN"]]
     if os.environ.get("EVAL_NO_JUDGE") == "1":
         cmd.append("--no-judge")
     print("running:", " ".join(cmd), flush=True)

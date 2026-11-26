@@ -1,0 +1,70 @@
+# Candidate index (Assignment 03, Part C1): the same data lake, chunked at 250/30 instead of
+# 400/50, written to its own collection rahbar_c250. The live collection is not touched.
+#   kubectl apply -f k8s/candidate/index-candidate.yaml
+#   kubectl wait --for=condition=complete job/index-candidate -n rahbar --timeout=2400s
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: index-candidate
+  namespace: rahbar
+  labels:
+    app: indexer
+spec:
+  backoffLimit: 4
+  activeDeadlineSeconds: 3600
+  template:
+    metadata:
+      labels:
+        app: indexer
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: indexer
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: indexer
+          image: rahbar-indexer:dev
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: rahbar-config
+          env:
+            - name: CHROMA_COLLECTION
+              value: rahbar_c250
+            - name: CHUNK_SIZE
+              value: "250"
+            - name: CHUNK_OVERLAP
+              value: "30"
+          resources:
+            # Embedding a 40-page PDF holds far more memory than answering a query.
+            # Replace with numbers from `kubectl top pods` taken during a real run.
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1500m
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            # OCR (pdf2image, tesseract) writes temporary page images here
+            - name: tmp
+              mountPath: /tmp
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: data
+          persistentVolumeClaim:
+            claimName: data-lake
