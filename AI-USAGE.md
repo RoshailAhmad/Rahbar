@@ -15,7 +15,7 @@ We used one AI tool: **Claude (Anthropic), through the claude.ai chat app**. We 
   - API tracing and guardrails (`api/app/services/trace.py`, `answer.py` changes, `trace_tool.py`, `trace_summary.py`), plus seed support and metrics.
   - First drafts of the pipeline modules Mehak integrated: `verify.py`, `ingest.py` request handling, `update.py`, the evaluation levels, query coverage, and the Batch B generator.
 - **Debugging:** helped diagnose the Chroma OOMKill (raised its memory to 768Mi/2Gi), the CI indexer reading an empty `DATA_DIR`, the PVC stuck in Pending, and a hanging `kubectl wait`.
-- **Golden set:** wrote synthetic questions q24–q31, each tied to a page of our corpus. We checked each one against the source document before marking it `reviewed: true`.
+- **Golden set:** wrote synthetic questions q24–q31 and q40–q47, each tied to a page of our corpus. We checked each one against the source document before marking it `reviewed: true`.
 - **Writing:** drafted the READMEs, this file and the report text from our run outputs and our descriptions of the work.
 
 ## What we did ourselves
