@@ -57,6 +57,7 @@ def sync(collection: Any, docs: list[LakeDoc], make_chunks: Callable[[LakeDoc], 
     stats = {"unchanged": 0, "metadata_updated": 0, "added": 0, "replaced": 0, "deleted": 0,
              "chunks_embedded": 0, "chunks_deleted": 0}
     dimension = (collection.metadata or {}).get("dimension")
+    written: set[str] = set()  # ids rewritten in this run, never deleted as orphans below
 
     for doc in docs:
         old = existing.get(doc.doc_id)
@@ -81,21 +82,26 @@ def sync(collection: Any, docs: list[LakeDoc], make_chunks: Callable[[LakeDoc], 
             stats["added"] += 1
         for start in range(0, len(chunks), BATCH):
             part = chunks[start:start + BATCH]
-            collection.add(
+            collection.upsert(
                 ids=[c.id for c in part],
                 documents=[c.text for c in part],
                 embeddings=vectors[start:start + BATCH],
                 metadatas=[{**c.metadata(), "doc_id": doc.doc_id, "content_hash": doc.sha256,
                             "superseded": doc.superseded} for c in part],
             )
+            written.update(c.id for c in part)
         stats["chunks_embedded"] += len(chunks)
 
     wanted = {d.doc_id for d in docs}
     for doc_id, old in existing.items():
         if doc_id not in wanted:  # deleted from the lake: remove every chunk, leave no orphans
-            collection.delete(ids=old["ids"])
+            # An id an older index shares with a chunk just written was overwritten by the
+            # upsert above; deleting it would drop the new chunk (found migrating from A2).
+            stale = [i for i in old["ids"] if i not in written]
+            if stale:
+                collection.delete(ids=stale)
             stats["deleted"] += 1
-            stats["chunks_deleted"] += len(old["ids"])
+            stats["chunks_deleted"] += len(stale)
 
     changed = any(stats[k] for k in ("metadata_updated", "added", "replaced", "deleted"))
     if changed:
