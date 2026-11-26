@@ -81,7 +81,7 @@ def sync(collection: Any, docs: list[LakeDoc], make_chunks: Callable[[LakeDoc], 
             stats["added"] += 1
         for start in range(0, len(chunks), BATCH):
             part = chunks[start:start + BATCH]
-            collection.add(
+            collection.upsert(
                 ids=[c.id for c in part],
                 documents=[c.text for c in part],
                 embeddings=vectors[start:start + BATCH],
