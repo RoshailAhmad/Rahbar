@@ -28,6 +28,11 @@ class FakeCollection:
         return {"ids": ids, "metadatas": [self.rows[i]["meta"] for i in ids]}
 
     def add(self, ids, documents, embeddings, metadatas):
+        # Like Chroma: add() silently skips ids that already exist.
+        for i, d, e, m in zip(ids, documents, embeddings, metadatas):
+            self.rows.setdefault(i, {"doc": d, "vec": e, "meta": m})
+
+    def upsert(self, ids, documents, embeddings, metadatas):
         for i, d, e, m in zip(ids, documents, embeddings, metadatas):
             self.rows[i] = {"doc": d, "vec": e, "meta": m}
 
@@ -134,3 +139,17 @@ def test_requests_delete_archive_and_restore(tmp_path: Path) -> None:
     assert reg["fee-2026"]["superseded"] is False and reg["fee-2026"]["folder"] == "lake"
     assert reg["fee-2027"]["superseded"] is True and reg["fee-2027"]["folder"] == "archive"
     assert "guide" not in reg and (tmp_path / "deleted" / "guide.md").exists()
+
+
+def test_migrating_from_an_index_with_the_same_chunk_ids(tmp_path: Path) -> None:
+    """An older index used the same chunk ids but had no doc_id. The sync must overwrite
+    those chunks, not skip them and then delete them as orphans (bug found on Batch B)."""
+    coll = FakeCollection()
+    docs = docs_from(tmp_path, TEXTS)
+    for doc in docs:
+        for c in make_chunks(doc):
+            coll.rows[c.id] = {"doc": c.text, "vec": [0.0, 0.0], "meta": {"source": c.source}}
+    stats = sync(coll, docs, make_chunks, make_embed(coll), "fake")
+    assert stats["added"] == 3 and stats["chunks_embedded"] == 8
+    assert coll.count() == 8
+    assert counts_by_doc(coll) == {"fees": 3, "guide": 2, "rules": 3}
